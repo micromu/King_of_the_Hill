@@ -1,0 +1,6 @@
+18/01/2013
+- deleted Linux/Navigation and Linux/video_demo folders and changed Makefile accordingly
+- choosed the Linux/sdk_demo as starting point because less cluttered
+- added comment to ardrone_testing_tool.c, navdata.c and video_stage.c. 
+  video_stage.c need more investigation to be better understood.
+- create a git repo.

@@ -1,7 +1,7 @@
 prefix=
 exec_prefix=
 libdir=${pcfiledir}
-includedir=/home/micromu/Downloads/ARDrone_SDK_2_0_1/ARDroneLib/FFMPEG/ffmpeg
+includedir=/home/micromu/Desktop/ARDrone_SDK_2_0_1/ARDroneLib/FFMPEG/ffmpeg
 
 Name: libswscale
 Description: FFmpeg image rescaling library

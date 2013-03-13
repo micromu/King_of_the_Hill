@@ -299,6 +299,8 @@ bool_t ardrone_tool_exit ()
     return exit_program == 0;
 }
 
+#include "global_variables.h"
+
 //NEW THREADS ADDED BY ME
 DEFINE_THREAD_ROUTINE(drone_logic, data){
     if(game_active){
@@ -309,24 +311,24 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 //CHASING - N.B. hill have higher priority than enemy
                 if(hill_in_sight){
                     //move toward the hill
-                    if(hill_distance > tot && hill_distance < max_distance){
+                    if((hill_distance > hill_min_distance) && (hill_distance < hill_max_distance)){
                         //TODO: collina a distanza ragionevole. avvicinati
                         
                     //hover over the hill
-                    } else if(hill_distance < min_distance) {
+                    } else if(hill_distance < hill_min_distance) {
                         //TODO: inizia la procedura di riconoscimento collina (cambia cam, hover...)
                         //set a variable to tell the score logic to add one for the drone
                     }
-                } else if(enemy_in_sigh){
-                    if(enemy_distance < min_distance){
+                } else if(enemy_in_sight){
+                    if(enemy_distance < enemy_min_distance){
                         //TODO: too close!! back up
                     
                     //TODO: implements a good algorithm that choose when to shoot and when not
                     // e.g. after some time (or randomly), the drone should stop shooting and/or chasing the enemy
-                    } else if(enemy_distance > min_distance && enemy_distance < shooting_distance){
+                    } else if((enemy_distance > enemy_min_distance) && (enemy_distance < enemy_shooting_distance)){
                         //TODO: shoot!!
                             
-                    } else if(enemy_distance > shooting_distance && enemy_distance < max_distance){
+                    } else if((enemy_distance > enemy_shooting_distance) && (enemy_distance < enemy_max_distance)){
                         //TODO: move toward the enemy
                     }
                 } else {
@@ -353,12 +355,12 @@ DEFINE_THREAD_ROUTINE(fly_control, data){
 }
 
 DEFINE_THREAD_ROUTINE(wiimote, data){
-    int ammunitions = 5; //TODO: use a CONSTANT!!
+    int ammunitions = number_of_ammo; //TODO: use a CONSTANT!!
     
     //TODO: connect to the wiimote
     
     while(game_active){
-        if(ammunitions > 0 && trigger_pressed){
+        if(ammunitions > 0 /*TODO: add -> && trigger_pressed*/){
             
             //TODO: -1 ammo
             //sound and/or vibration

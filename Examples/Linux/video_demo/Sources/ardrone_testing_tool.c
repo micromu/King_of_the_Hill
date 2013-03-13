@@ -299,6 +299,87 @@ bool_t ardrone_tool_exit ()
     return exit_program == 0;
 }
 
+//NEW THREADS ADDED BY ME
+DEFINE_THREAD_ROUTINE(drone_logic, data){
+    if(game_active){
+        //the game is active from start, but the logic will start only when a match is active
+        while(game_active){
+            if(match){
+                
+                //CHASING - N.B. hill have higher priority than enemy
+                if(hill_in_sight){
+                    //move toward the hill
+                    if(hill_distance > tot && hill_distance < max_distance){
+                        //TODO: collina a distanza ragionevole. avvicinati
+                        
+                    //hover over the hill
+                    } else if(hill_distance < min_distance) {
+                        //TODO: inizia la procedura di riconoscimento collina (cambia cam, hover...)
+                        //set a variable to tell the score logic to add one for the drone
+                    }
+                } else if(enemy_in_sigh){
+                    if(enemy_distance < min_distance){
+                        //TODO: too close!! back up
+                    
+                    //TODO: implements a good algorithm that choose when to shoot and when not
+                    // e.g. after some time (or randomly), the drone should stop shooting and/or chasing the enemy
+                    } else if(enemy_distance > min_distance && enemy_distance < shooting_distance){
+                        //TODO: shoot!!
+                            
+                    } else if(enemy_distance > shooting_distance && enemy_distance < max_distance){
+                        //TODO: move toward the enemy
+                    }
+                } else {
+                    //TODO: nothing in sight: hover and start the locator algorithm
+                }
+                
+                //HIT
+                if(drone_wounded){
+                    //TODO: make the drone move as if it was being shot
+                    //maybe this should be moved in the flying thread
+                }
+                
+            //MATCH OVER
+            } else {
+                //TODO: land the drone
+            }
+        }
+        
+    }
+}
+
+DEFINE_THREAD_ROUTINE(fly_control, data){
+    //TODO: I REALLY NEED THIS?
+}
+
+DEFINE_THREAD_ROUTINE(wiimote, data){
+    int ammunitions = 5; //TODO: use a CONSTANT!!
+    
+    //TODO: connect to the wiimote
+    
+    while(game_active){
+        if(ammunitions > 0 && trigger_pressed){
+            
+            //TODO: -1 ammo
+            //sound and/or vibration
+            
+            if(drone_in_sight){
+                //TODO: drone wounded, notify the score logic or just make the drone stop? you have to decide!
+            }
+            
+        } else {
+            //TODO: you have to recharge
+            //check if recharge site in sight, check if button pressed, wait tot seconds, reset ammo counter
+        }
+    }
+    
+}
+
+DEFINE_THREAD_ROUTINE(score_logic, data){
+    
+}
+
+
 /**
  * Declare Thread / Navdata tables
  */
@@ -313,6 +394,10 @@ THREAD_TABLE_ENTRY(video_recorder, 20)
 THREAD_TABLE_ENTRY(navdata_update, 20)
 THREAD_TABLE_ENTRY(ardrone_control, 20)
 THREAD_TABLE_ENTRY(gtk, 20)
+THREAD_TABLE_ENTRY(drone_logic, 20)
+THREAD_TABLE_ENTRY(fly_control, 20)
+THREAD_TABLE_ENTRY(wiimote, 20)
+THREAD_TABLE_ENTRY(score_logic, 20)
 END_THREAD_TABLE
 
 BEGIN_NAVDATA_HANDLER_TABLE

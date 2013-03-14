@@ -45,7 +45,7 @@ GENERIC_INCLUDES:=$(addprefix -I,$(GENERIC_INCLUDES))
 GENERIC_INCLUDES+=$(shell pkg-config --cflags opencv)
 
 GENERIC_LIB_PATHS=-L$(GENERIC_TARGET_BINARIES_DIR)
-GENERIC_LIBS=-lpc_ardrone -lrt -lgtk-x11-2.0 -lcairo
+GENERIC_LIBS=-lpc_ardrone -lrt -lgtk-x11-2.0 -lcairo -lcwiid
 GENERIC_LIBS+=$(shell pkg-config --libs opencv)
 
 

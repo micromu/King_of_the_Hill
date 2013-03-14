@@ -135,12 +135,14 @@ typedef volatile int64_t    vint64;
 
 #define BDADDR_SIZE   6
 
-#if !defined(__BLUETOOTH_H)
-typedef struct _bdaddr_t
-{
-  uint8_t b[BDADDR_SIZE];
-} bdaddr_t;
-#endif // !defined(__BLUETOOTH_H)
+#include <bluetooth/bluetooth.h> 
+//NOTE: included bluetooth and deleted the line belowe because of a conflict with cwiid.h
+//#if !defined(__BLUETOOTH_H)
+//typedef struct _bdaddr_t
+//{
+    //  uint8_t b[BDADDR_SIZE];
+//} bdaddr_t;
+//#endif // !defined(__BLUETOOTH_H)
 
 typedef C_RESULT (*Read)  (void* s, uint8_t* buffer, int32_t* size);
 typedef C_RESULT (*Write) (void* s, const uint8_t* buffer, int32_t* size);

@@ -300,6 +300,7 @@ bool_t ardrone_tool_exit ()
 }
 
 #include "global_variables.h"
+#include <cwiid.h>
 
 //NEW THREADS ADDED BY ME
 DEFINE_THREAD_ROUTINE(drone_logic, data){
@@ -352,26 +353,49 @@ DEFINE_THREAD_ROUTINE(fly_control, data){
 }
 
 DEFINE_THREAD_ROUTINE(wiimote, data){
-    int ammunitions = number_of_ammo; //TODO: use a CONSTANT!!
+    int ammunitions = number_of_ammo;
     
-    //TODO: connect to the wiimote
+    static bdaddr_t bdaddr = {0};
+    static cwiid_wiimote_t *wiimote = NULL;
+    union cwiid_mesg *msg = NULL;
+    struct timespec timestamp;
+    
+    int wiimote_connected = 0;
+    //int bullets = 4;
+    //int i = 0;
+    //int j = 0;
+    //int msg_count = 0;
     
     while(game_active){
-        if(ammunitions > 0 /*TODO: add -> && trigger_pressed*/){
-            
-            //TODO: -1 ammo
-            //sound and/or vibration
-            
-            if(drone_in_sight){
-                //TODO: drone wounded, notify the score logic or just make the drone stop? you have to decide!
+        
+        //CONNECT TO THE WIIMOTE
+        if(wiimote_connected == 0) {
+            if( ! (wiimote = cwiid_open(&bdaddr, CWIID_FLAG_MESG_IFC)) ) {
+                printf("Unable to connect to wiimote\n");
+            } else {
+                wiimote_connected = 1;
+                printf("Wiimote found\n");
+                cwiid_command(wiimote, CWIID_CMD_LED, CWIID_LED1_ON|CWIID_LED2_ON|CWIID_LED3_ON|CWIID_LED4_ON);
+                cwiid_command(wiimote, CWIID_CMD_RPT_MODE, CWIID_RPT_IR|CWIID_RPT_ACC|CWIID_RPT_BTN);
             }
             
+        //ALREADY CONNECTED
         } else {
-            //TODO: you have to recharge
-            //check if recharge site in sight, check if button pressed, wait tot seconds, reset ammo counter
+            if(ammunitions > 0 /*TODO: add -> && trigger_pressed*/){
+                
+                //TODO: -1 ammo
+                //sound and/or vibration
+                
+                if(drone_in_sight){
+                    //TODO: drone wounded, notify the score logic or just make the drone stop? you have to decide!
+                }
+                
+            } else {
+                //TODO: you have to recharge
+                //check if recharge site in sight, check if button pressed, wait tot seconds, reset ammo counter
+            }
         }
-    }
-    
+    } 
 }
 
 DEFINE_THREAD_ROUTINE(score_logic, data){

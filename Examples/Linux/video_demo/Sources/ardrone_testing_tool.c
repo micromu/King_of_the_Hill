@@ -355,7 +355,7 @@ DEFINE_THREAD_ROUTINE(fly_control, data){
 }
 
 DEFINE_THREAD_ROUTINE(wiimote, data){
-    int ammunitions = number_of_ammo;
+    int bullets = magazine_capacity;
     
     static bdaddr_t bdaddr = {0};
     static cwiid_wiimote_t *wiimote = NULL;
@@ -364,10 +364,10 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
     
     int wiimote_connected = 0;
     
-    int drone_led = 0;
-    int shoot_button = 0;
+    int drone_in_sight = 0;
+    int trigger_button = 0;
     int number_of_led = 0;
-    int recharging_led = 0;
+    int recharger_in_sight = 0;
     int recharging_button = 0;
     int i = 0;
     int j = 0;
@@ -375,12 +375,12 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
     
     while(game_active){
         
-        shoot_button = 0;
+        trigger_button = 0;
         recharging_button = 0;
         
         number_of_led = 0;
-        recharging_led = 0;
-        drone_led = 0;
+        recharger_in_sight = 0;
+        drone_in_sight = 0;
         
         
         //CONNECT TO THE WIIMOTE
@@ -396,6 +396,7 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
             
         //ALREADY CONNECTED
         } else {
+            
             //--- GET INPUTS FROM THE WIIMOTE ---//
             
             //get messages (blocking)
@@ -405,19 +406,27 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
             //and to count the number of IR leds found (4 leds == recharge, other == drone //TODO: define the number of leds for the drone)
             for(i = 0; i < msg_count; i++){
                 
+                //are button B and button A pressed?
                 if(msg[i].type == CWIID_MESG_BTN){
+                    
                     if(msg[i].btn_mesg.buttons == CWIID_BTN_B){
-                        shoot_button = 1;
+                        trigger_button = 1;
                         printf("SHOOT\n");
+                    } else {
+                        trigger_button = 0;
                     }
                     
                     if(msg[i].btn_mesg.buttons == CWIID_BTN_A){
                         recharging_button = 1;
                         printf("BUTTON A\n");
+                    } else {
+                        recharging_button = 0;
                     }
+                    
                 }
                 
                 //NOTE: the wiimote find also hot source of light and the sun!!
+                //are there leds?
                 if(msg[i].type == CWIID_MESG_IR){ 
                     for(j = 0; j < CWIID_IR_SRC_COUNT; j++){
                         if(msg[i].ir_mesg.src[j].valid != 0){
@@ -425,27 +434,46 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
                         }
                     }
                     if(number_of_led == 4){
-                        recharging_led = 1;
+                        recharger_in_sight = 1;
                         printf("FOUR LED\n");
                     } else if(number_of_led > 0) {
                         //TODO: I can use 2 leds to identify the drone? should I?
-                        drone_led = 1;
+                        drone_in_sight = 1;
                         printf("LEDS\n");
                     }
                 }
             }
-            if(ammunitions > 0 /*TODO: add -> && trigger_pressed*/){
+            
+            //--- WIIMOTE LOGIC ---//
+            //SHOOTING
+            if((bullets > 0) && trigger_button){
                 
-                //TODO: -1 ammo
-                //sound and/or vibration
+                //decrease the number of ammo by 1
+                bullets--;
+                
+                //haptic feedback
+                struct timespec shot_rumble_time; //TODO: move the definition from here!! should stay outside the while
+                shot_rumble_time.tv_sec = 1;
+                shot_rumble_time.tv_nsec = 0000000;
+                cwiid_command(wiimote, CWIID_CMD_RUMBLE, 1);
+                nanosleep(&shot_rumble_time, NULL);
+                cwiid_command(wiimote, CWIID_CMD_RUMBLE, 0);
                 
                 if(drone_in_sight){
+                    printf("   DRONE COLPITO   \n");
                     //TODO: drone wounded, notify the score logic or just make the drone stop? you have to decide!
                 }
+            
+            //you can recharge only if you don't have bullets any more
+            } else if(bullets < 1){
                 
-            } else {
-                //TODO: you have to recharge
-                //check if recharge site in sight, check if button pressed, wait tot seconds, reset ammo counter
+                printf("    PROIETTILI TERMINATI   \n");
+                //TODO: do I need to repeat somehow the information that the user doesn't have bullets anymore?
+                //or the fact that there aren't any more led on is enough?
+                if(recharger_in_sight && recharging_button){
+                    //TODO: do some fancy animation and wait tot secs
+                    bullets = magazine_capacity;
+                }
             }
         }
     } 

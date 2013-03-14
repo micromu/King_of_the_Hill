@@ -7,7 +7,7 @@
 #define enemy_min_distance 20
 #define enemy_shooting_distance 30
 
-#define number_of_ammo 5
+#define magazine_capacity 5
 
 //DRONE LOGIC
 //These flags are set by the gtk thread
@@ -29,10 +29,6 @@ int enemy_wounded = 0;
 //VIDEO STREAM
 int active_cam = 0; //who set this?
 
-//WIIMOTE
-int drone_in_sight = 0;
-int ammo_in_sight = 0;//1 if there are ammunition in sight to recharge
-int ammunitions_left = 0;
 
 //SCORE LOGIC
 //remember to set to 0/false drone_wounded and enemy_wounded after adding to te total score

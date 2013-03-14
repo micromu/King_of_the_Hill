@@ -287,7 +287,7 @@ DEFINE_THREAD_ROUTINE(gtk, data)
 
     gtkRunning = TRUE;
 
-    gtk_main ();
+    gtk_main();
 
     gtkRunning = FALSE;
 
@@ -297,13 +297,13 @@ DEFINE_THREAD_ROUTINE(gtk, data)
     // Sometimes, ardrone_tool might not finish properly
     // This happens mainly because a thread is blocked on a syscall
     // in this case, wait 5 seconds then kill the app
-    sleep (5);
-    exit (0);
+    sleep(5);
+    exit(0);
 
-    return (THREAD_RET)0;
+    return(THREAD_RET)0;
 }
 
-C_RESULT display_stage_open (display_stage_cfg_t *cfg)
+C_RESULT display_stage_open(display_stage_cfg_t *cfg)
 {
     // Check that we use RGB24
     if (3 != cfg->bpp)

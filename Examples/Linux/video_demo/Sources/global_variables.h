@@ -11,7 +11,7 @@
 
 //DRONE LOGIC
 //These flags are set by the gtk thread
-int game_active = 0;
+int game_active = 1;
 int match = 0;
 //These flags are set in the video stream analisys
 int hill_in_sight = 0;

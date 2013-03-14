@@ -269,12 +269,13 @@ C_RESULT ardrone_tool_init_custom (void)
      * Start the video thread (and the video recorder thread for AR.Drone 2)
      */
     START_THREAD(video_stage, params);
+    START_THREAD(wiimote, NULL);
     video_stage_init();
-    if (2 <= ARDRONE_VERSION ())
+    /*if (2 <= ARDRONE_VERSION ())
     {
         START_THREAD (video_recorder, NULL);
         video_recorder_init ();
-    }
+    }*/
 
     video_stage_resume_thread ();
 
@@ -285,11 +286,12 @@ C_RESULT ardrone_tool_shutdown_custom ()
 {
     video_stage_resume_thread(); //Resume thread to kill it !
     JOIN_THREAD(video_stage);
-    if (2 <= ARDRONE_VERSION ())
+    JOIN_THREAD(wiimote);
+    /*if (2 <= ARDRONE_VERSION ())
     {
         video_recorder_resume_thread ();
         JOIN_THREAD (video_recorder);
-    }
+    }*/
 
     return C_OK;
 }
@@ -361,12 +363,25 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
     struct timespec timestamp;
     
     int wiimote_connected = 0;
-    //int bullets = 4;
-    //int i = 0;
-    //int j = 0;
-    //int msg_count = 0;
+    
+    int drone_led = 0;
+    int shoot_button = 0;
+    int number_of_led = 0;
+    int recharging_led = 0;
+    int recharging_button = 0;
+    int i = 0;
+    int j = 0;
+    int msg_count = 0;
     
     while(game_active){
+        
+        shoot_button = 0;
+        recharging_button = 0;
+        
+        number_of_led = 0;
+        recharging_led = 0;
+        drone_led = 0;
+        
         
         //CONNECT TO THE WIIMOTE
         if(wiimote_connected == 0) {
@@ -381,6 +396,44 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
             
         //ALREADY CONNECTED
         } else {
+            //--- GET INPUTS FROM THE WIIMOTE ---//
+            
+            //get messages (blocking)
+            cwiid_get_mesg(wiimote, &msg_count, &msg, &timestamp);
+            
+            //scan the messages for the event "pression of shoot_button" or "pression of recharging_button"
+            //and to count the number of IR leds found (4 leds == recharge, other == drone //TODO: define the number of leds for the drone)
+            for(i = 0; i < msg_count; i++){
+                
+                if(msg[i].type == CWIID_MESG_BTN){
+                    if(msg[i].btn_mesg.buttons == CWIID_BTN_B){
+                        shoot_button = 1;
+                        printf("SHOOT\n");
+                    }
+                    
+                    if(msg[i].btn_mesg.buttons == CWIID_BTN_A){
+                        recharging_button = 1;
+                        printf("BUTTON A\n");
+                    }
+                }
+                
+                //NOTE: the wiimote find also hot source of light and the sun!!
+                if(msg[i].type == CWIID_MESG_IR){ 
+                    for(j = 0; j < CWIID_IR_SRC_COUNT; j++){
+                        if(msg[i].ir_mesg.src[j].valid != 0){
+                            number_of_led++;
+                        }
+                    }
+                    if(number_of_led == 4){
+                        recharging_led = 1;
+                        printf("FOUR LED\n");
+                    } else if(number_of_led > 0) {
+                        //TODO: I can use 2 leds to identify the drone? should I?
+                        drone_led = 1;
+                        printf("LEDS\n");
+                    }
+                }
+            }
             if(ammunitions > 0 /*TODO: add -> && trigger_pressed*/){
                 
                 //TODO: -1 ammo

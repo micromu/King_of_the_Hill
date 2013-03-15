@@ -22,6 +22,7 @@ int hill_offset_from_center = 0;
 int enemy_offset_from_center = 0;
 int drone_above_hill = 0; //the drone is above the target hill
 int enemy_on_target = 0;//the enemy is in the center of the image
+
 //These flags are set by the score logic thread
 int drone_wounded = 0;
 int enemy_wounded = 0;
@@ -33,4 +34,6 @@ int active_cam = 0; //who set this?
 //SCORE LOGIC
 //remember to set to 0/false drone_wounded and enemy_wounded after adding to te total score
 // e se potesse fare punto solo il drone, e il nemico si limitasse a stordirlo per tot secondi?
+int drone_score = 10;
+int enemy_score = 10;
 

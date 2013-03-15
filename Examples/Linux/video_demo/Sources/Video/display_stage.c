@@ -232,6 +232,18 @@ gint stopdrone(GtkWidget *widget, gpointer data){
     return C_OK;
 }
 
+gint quitgui(GtkWidget *widget, gpointer data){
+    //TODO: it doesn't work... and I don't know why....
+    ardrone_at_set_progress_cmd(0,0,0,0,0);
+    ardrone_tool_set_ui_pad_start(0);
+    
+    printf("QUITTING!!\n");
+    
+    gtk_main_quit();
+    
+    return C_OK;
+}
+
 /**
  * Main GTK Thread.
  * On an actual application, this thread should be started from your app main thread, and not from a video stage
@@ -249,7 +261,7 @@ DEFINE_THREAD_ROUTINE(gtk, data)
     cfg->widget = window;
 
     g_signal_connect(window, "expose-event", G_CALLBACK(on_expose_event), data);
-    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+    g_signal_connect(window, "destroy", G_CALLBACK(quitgui), NULL);
 
     gtk_window_set_position(GTK_WINDOW (window), GTK_WIN_POS_CENTER);
     gtk_window_set_default_size(GTK_WINDOW(window), 10, 10);
@@ -286,10 +298,10 @@ DEFINE_THREAD_ROUTINE(gtk, data)
     gtk_widget_show_all(window);
 
     gtkRunning = TRUE;
-
     gtk_main();
-
+    
     gtkRunning = FALSE;
+    
 
     // Force ardrone_tool to close
     exit_program = 0;

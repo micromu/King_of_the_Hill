@@ -270,12 +270,8 @@ C_RESULT ardrone_tool_init_custom (void)
      */
     START_THREAD(video_stage, params);
     START_THREAD(wiimote, NULL);
+    START_THREAD(score_logic, NULL);
     video_stage_init();
-    /*if (2 <= ARDRONE_VERSION ())
-    {
-        START_THREAD (video_recorder, NULL);
-        video_recorder_init ();
-    }*/
 
     video_stage_resume_thread ();
 
@@ -287,11 +283,7 @@ C_RESULT ardrone_tool_shutdown_custom ()
     video_stage_resume_thread(); //Resume thread to kill it !
     JOIN_THREAD(video_stage);
     JOIN_THREAD(wiimote);
-    /*if (2 <= ARDRONE_VERSION ())
-    {
-        video_recorder_resume_thread ();
-        JOIN_THREAD (video_recorder);
-    }*/
+    JOIN_THREAD(score_logic);
 
     return C_OK;
 }
@@ -375,9 +367,6 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
     
     while(game_active){
         
-        trigger_button = 0;
-        recharging_button = 0;
-        
         number_of_led = 0;
         recharger_in_sight = 0;
         drone_in_sight = 0;
@@ -390,8 +379,9 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
             } else {
                 wiimote_connected = 1;
                 printf("Wiimote found\n");
+                cwiid_enable(wiimote, CWIID_FLAG_CONTINUOUS);
                 cwiid_command(wiimote, CWIID_CMD_LED, CWIID_LED1_ON|CWIID_LED2_ON|CWIID_LED3_ON|CWIID_LED4_ON);
-                cwiid_command(wiimote, CWIID_CMD_RPT_MODE, CWIID_RPT_IR|CWIID_RPT_ACC|CWIID_RPT_BTN);
+                cwiid_command(wiimote, CWIID_CMD_RPT_MODE, CWIID_RPT_IR|CWIID_RPT_BTN);
             }
             
         //ALREADY CONNECTED
@@ -402,13 +392,16 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
             //get messages (blocking)
             cwiid_get_mesg(wiimote, &msg_count, &msg, &timestamp);
             
-            //scan the messages for the event "pression of shoot_button" or "pression of recharging_button"
-            //and to count the number of IR leds found (4 leds == recharge, other == drone //TODO: define the number of leds for the drone)
+            //scan the messages for the event "pression of trigger_button" or "pression of recharging_button"
+            //and to count the number of IR leds found (4 leds == recharge, other == drone 
+            //TODO: define the number of leds for the drone)
+            //TODO: the wiimote find false positive (sometimes 1led == 4leds :O)
+            //TODO: the wiimote is REALLY sensitive to sun light, I may have to rethink the recharging routine
             for(i = 0; i < msg_count; i++){
                 
-                //are button B and button A pressed?
                 if(msg[i].type == CWIID_MESG_BTN){
                     
+                    //is button B pressed?
                     if(msg[i].btn_mesg.buttons == CWIID_BTN_B){
                         trigger_button = 1;
                         printf("SHOOT\n");
@@ -416,6 +409,7 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
                         trigger_button = 0;
                     }
                     
+                    //is button A pressed?
                     if(msg[i].btn_mesg.buttons == CWIID_BTN_A){
                         recharging_button = 1;
                         printf("BUTTON A\n");
@@ -433,13 +427,11 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
                             number_of_led++;
                         }
                     }
-                    if(number_of_led == 4){
-                        recharger_in_sight = 1;
-                        printf("FOUR LED\n");
-                    } else if(number_of_led > 0) {
-                        //TODO: I can use 2 leds to identify the drone? should I?
-                        drone_in_sight = 1;
+                    
+                    //TODO: I have problem with the recognition of a fixed amount of leds
+                    if(number_of_led > 0){
                         printf("LEDS\n");
+                        drone_in_sight = 1;
                     }
                 }
             }
@@ -448,8 +440,8 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
             //SHOOTING
             if((bullets > 0) && trigger_button){
                 
-                //decrease the number of ammo by 1
                 bullets--;
+                printf("lost one bullet\n");
                 
                 //haptic feedback
                 struct timespec shot_rumble_time; //TODO: move the definition from here!! should stay outside the while
@@ -460,9 +452,16 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
                 cwiid_command(wiimote, CWIID_CMD_RUMBLE, 0);
                 
                 if(drone_in_sight){
-                    printf("   DRONE COLPITO   \n");
-                    //TODO: drone wounded, notify the score logic or just make the drone stop? you have to decide!
+                    printf("DRONE COLPITO\n");
+                    drone_in_sight = 0; //TODO: not sure if necessary...
+                    //if drone_wounded == 1, the logic haven't calculate the previous score yet
+                    //TODO: I may set a wayting period between two consecutive shoot to prevent this...
+                    drone_wounded = 1;
+                } else {
+                    printf("DRONE MISSED!!\n");
                 }
+                
+                trigger_button = 0;
             
             //you can recharge only if you don't have bullets any more
             } else if(bullets < 1){
@@ -480,7 +479,18 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
 }
 
 DEFINE_THREAD_ROUTINE(score_logic, data){
-    
+    while(game_active){
+        if(drone_wounded){
+            //TODO: this doesn't work... I don't know why...
+            //TODO: try to use a mutex! and see if this work...
+            printf("DRONE WOUNDED!!\n");
+            if(drone_score > 0){
+                drone_score--;
+                printf("DRONE SCORE: \n");
+                drone_wounded = 0;
+            }
+        }
+    }
 }
 
 
@@ -494,7 +504,6 @@ PROTO_THREAD_ROUTINE(gtk, data);
 
 BEGIN_THREAD_TABLE
 THREAD_TABLE_ENTRY(video_stage, 20)
-THREAD_TABLE_ENTRY(video_recorder, 20)
 THREAD_TABLE_ENTRY(navdata_update, 20)
 THREAD_TABLE_ENTRY(ardrone_control, 20)
 THREAD_TABLE_ENTRY(gtk, 20)

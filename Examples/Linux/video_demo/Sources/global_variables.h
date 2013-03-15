@@ -24,6 +24,13 @@ int drone_above_hill = 0; //the drone is above the target hill
 int enemy_on_target = 0;//the enemy is in the center of the image
 
 //These flags are set by the score logic thread
+/*vp_os_mutex_init(vp_os_mutex_t *mutex);
+vp_os_mutex_destroy(vp_os_mutex_t *mutex);
+vp_os_mutex_lock(vp_os_mutex_t *mutex);
+vp_os_mutex_unlock(vp_os_mutex_t *mutex);*/
+
+vp_os_mutex_t drone_wound_mutex = PTHREAD_MUTEX_INITIALIZER;
+vp_os_mutex_t enemy_wound_mutex = PTHREAD_MUTEX_INITIALIZER;
 int drone_wounded = 0;
 int enemy_wounded = 0;
 

@@ -369,7 +369,6 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
         
         number_of_led = 0;
         recharger_in_sight = 0;
-        drone_in_sight = 0;
         
         
         //CONNECT TO THE WIIMOTE
@@ -379,7 +378,6 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
             } else {
                 wiimote_connected = 1;
                 printf("Wiimote found\n");
-                cwiid_enable(wiimote, CWIID_FLAG_CONTINUOUS);
                 cwiid_command(wiimote, CWIID_CMD_LED, CWIID_LED1_ON|CWIID_LED2_ON|CWIID_LED3_ON|CWIID_LED4_ON);
                 cwiid_command(wiimote, CWIID_CMD_RPT_MODE, CWIID_RPT_IR|CWIID_RPT_BTN);
             }
@@ -432,6 +430,10 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
                     if(number_of_led > 0){
                         printf("LEDS\n");
                         drone_in_sight = 1;
+                        //TODO: this is logically wrong, but is just to test it
+                        recharger_in_sight = 1;
+                    } else {
+                        drone_in_sight = 0;
                     }
                 }
             }
@@ -456,7 +458,9 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
                     drone_in_sight = 0; //TODO: not sure if necessary...
                     //if drone_wounded == 1, the logic haven't calculate the previous score yet
                     //TODO: I may set a wayting period between two consecutive shoot to prevent this...
-                    drone_wounded = 1;
+                    vp_os_mutex_lock(&drone_wound_mutex);
+                        drone_wounded = 1;
+                    vp_os_mutex_unlock(&drone_wound_mutex);
                 } else {
                     printf("DRONE MISSED!!\n");
                 }
@@ -480,16 +484,21 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
 
 DEFINE_THREAD_ROUTINE(score_logic, data){
     while(game_active){
+        vp_os_mutex_lock(&drone_wound_mutex);
         if(drone_wounded){
-            //TODO: this doesn't work... I don't know why...
-            //TODO: try to use a mutex! and see if this work...
+            //NOTE: Now it works but I don't know why... anyway it is really hard to shoot to the drone
+            // I suspect that it is because the wiimote thread cycle too fast. 
+            //If it is the case I may want to set a sleep in the wiimote thread somewhere
             printf("DRONE WOUNDED!!\n");
+            
             if(drone_score > 0){
                 drone_score--;
                 printf("DRONE SCORE: \n");
                 drone_wounded = 0;
             }
+           
         }
+        vp_os_mutex_unlock(&drone_wound_mutex);
     }
 }
 

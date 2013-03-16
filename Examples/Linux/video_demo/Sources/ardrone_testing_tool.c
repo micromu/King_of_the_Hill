@@ -365,6 +365,10 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
     int j = 0;
     int msg_count = 0;
     
+    struct timespec shot_rumble_time; //TODO: give it a proper name!
+    shot_rumble_time.tv_sec = 1;
+    shot_rumble_time.tv_nsec = 0000000;
+    
     while(game_active){
         
         number_of_led = 0;
@@ -446,9 +450,6 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
                 printf("lost one bullet\n");
                 
                 //haptic feedback
-                struct timespec shot_rumble_time; //TODO: move the definition from here!! should stay outside the while
-                shot_rumble_time.tv_sec = 1;
-                shot_rumble_time.tv_nsec = 0000000;
                 cwiid_command(wiimote, CWIID_CMD_RUMBLE, 1);
                 nanosleep(&shot_rumble_time, NULL);
                 cwiid_command(wiimote, CWIID_CMD_RUMBLE, 0);
@@ -461,6 +462,7 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
                     vp_os_mutex_lock(&drone_wound_mutex);
                         drone_wounded = 1;
                     vp_os_mutex_unlock(&drone_wound_mutex);
+                    nanosleep(&shot_rumble_time, NULL);
                 } else {
                     printf("DRONE MISSED!!\n");
                 }
@@ -483,6 +485,11 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
 }
 
 DEFINE_THREAD_ROUTINE(score_logic, data){
+    
+    struct timespec shot_rumble_time; //TODO: give it a proper name!
+    shot_rumble_time.tv_sec = 1;
+    shot_rumble_time.tv_nsec = 0000000;
+    
     while(game_active){
         vp_os_mutex_lock(&drone_wound_mutex);
         if(drone_wounded){
@@ -490,12 +497,12 @@ DEFINE_THREAD_ROUTINE(score_logic, data){
             // I suspect that it is because the wiimote thread cycle too fast. 
             //If it is the case I may want to set a sleep in the wiimote thread somewhere
             printf("DRONE WOUNDED!!\n");
-            
-            if(drone_score > 0){
+            nanosleep(&shot_rumble_time, NULL);
+            //if(drone_score > 0){
                 drone_score--;
                 printf("DRONE SCORE: \n");
                 drone_wounded = 0;
-            }
+            //}
            
         }
         vp_os_mutex_unlock(&drone_wound_mutex);

@@ -46,8 +46,9 @@
 #include <Video/pre_stage.h>
 #include <Video/display_stage.h>
 
-// GTK includes
-#include <gtk/gtk.h>
+//King of the Hill
+#include "global_variables.h"
+#include <cwiid.h>
 
 int exit_program = 1;
 
@@ -106,8 +107,6 @@ int main (int argc, char *argv[])
         }
     }
 
-    gtk_init (&prevargc, &prevargv);
-
     return ardrone_tool_main (prevargc, prevargv);
 }
 
@@ -123,12 +122,9 @@ C_RESULT ardrone_tool_init_custom (void)
      */
     ardrone_application_default_config.navdata_demo = TRUE;
     ardrone_application_default_config.navdata_options = (NAVDATA_OPTION_MASK(NAVDATA_DEMO_TAG) | NAVDATA_OPTION_MASK(NAVDATA_VISION_DETECT_TAG) | NAVDATA_OPTION_MASK(NAVDATA_GAMES_TAG) | NAVDATA_OPTION_MASK(NAVDATA_MAGNETO_TAG) | NAVDATA_OPTION_MASK(NAVDATA_HDVIDEO_STREAM_TAG) | NAVDATA_OPTION_MASK(NAVDATA_WIFI_TAG));
-    if (IS_ARDRONE2)
-    {
+    if (IS_ARDRONE2){
         ardrone_application_default_config.video_codec = drone2Codec;
-    }
-    else
-    {
+    } else {
         ardrone_application_default_config.video_codec = drone1Codec;
     }
     ardrone_application_default_config.video_channel = videoChannel;
@@ -268,22 +264,34 @@ C_RESULT ardrone_tool_init_custom (void)
     /**
      * Start the video thread (and the video recorder thread for AR.Drone 2)
      */
-    START_THREAD(video_stage, params);
     START_THREAD(wiimote, NULL);
     START_THREAD(score_logic, NULL);
+    
+    START_THREAD(video_stage, params);
+    START_THREAD (video_recorder, NULL);
     video_stage_init();
-
-    video_stage_resume_thread ();
-
+    if (2 <= ARDRONE_VERSION ())
+    {
+        START_THREAD (video_recorder, NULL);
+        video_recorder_init ();
+    }
+    video_stage_resume_thread();
+    
     return C_OK;
 }
 
 C_RESULT ardrone_tool_shutdown_custom ()
 {
-    video_stage_resume_thread(); //Resume thread to kill it !
-    JOIN_THREAD(video_stage);
     JOIN_THREAD(wiimote);
     JOIN_THREAD(score_logic);
+    
+    video_stage_resume_thread(); //Resume thread to kill it !
+    JOIN_THREAD(video_stage);
+    if (2 <= ARDRONE_VERSION ())
+    {
+        video_recorder_resume_thread ();
+        JOIN_THREAD (video_recorder);
+    }
 
     return C_OK;
 }
@@ -292,9 +300,6 @@ bool_t ardrone_tool_exit ()
 {
     return exit_program == 0;
 }
-
-#include "global_variables.h"
-#include <cwiid.h>
 
 //NEW THREADS ADDED BY ME
 DEFINE_THREAD_ROUTINE(drone_logic, data){
@@ -340,10 +345,13 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
             //TODO: land the drone
         }
     }
+    
+    return C_OK;
 }
 
 DEFINE_THREAD_ROUTINE(fly_control, data){
     //TODO: I REALLY NEED THIS?
+    return C_OK;
 }
 
 DEFINE_THREAD_ROUTINE(wiimote, data){
@@ -481,13 +489,15 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
                 }
             }
         }
-    } 
+    }
+    
+    return C_OK;
 }
 
 DEFINE_THREAD_ROUTINE(score_logic, data){
     
     struct timespec shot_rumble_time; //TODO: give it a proper name!
-    shot_rumble_time.tv_sec = 1;
+    shot_rumble_time.tv_sec = 5;
     shot_rumble_time.tv_nsec = 0000000;
     
     while(game_active){
@@ -507,22 +517,19 @@ DEFINE_THREAD_ROUTINE(score_logic, data){
         }
         vp_os_mutex_unlock(&drone_wound_mutex);
     }
+    
+    return C_OK;
 }
 
 
 /**
  * Declare Thread / Navdata tables
  */
-
-// Declare gtk thread and include it in the thread table
-//  This is needed because the display_stage.c file can't access this table
-PROTO_THREAD_ROUTINE(gtk, data);
-
 BEGIN_THREAD_TABLE
 THREAD_TABLE_ENTRY(video_stage, 20)
+THREAD_TABLE_ENTRY(video_recorder, 20)
 THREAD_TABLE_ENTRY(navdata_update, 20)
 THREAD_TABLE_ENTRY(ardrone_control, 20)
-THREAD_TABLE_ENTRY(gtk, 20)
 THREAD_TABLE_ENTRY(drone_logic, 20)
 THREAD_TABLE_ENTRY(fly_control, 20)
 THREAD_TABLE_ENTRY(wiimote, 20)

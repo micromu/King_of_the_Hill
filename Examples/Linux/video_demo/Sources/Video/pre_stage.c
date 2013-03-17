@@ -48,7 +48,7 @@ C_RESULT pre_stage_transform (pre_stage_cfg_t *cfg, vp_api_io_data_t *in, vp_api
     //
     if (NULL != cfg->outputFile)
     {
-        if (hasPaVE (in->buffers[in->indexBuffer])) // AR.Drone 2
+        if (hasPaVE(in->buffers[in->indexBuffer])) // AR.Drone 2
         {
             parrot_video_encapsulation_t *PaVE = (parrot_video_encapsulation_t *)in->buffers[in->indexBuffer];
             uint8_t *videoData = &(in->buffers[in->indexBuffer][PaVE->header_size]);

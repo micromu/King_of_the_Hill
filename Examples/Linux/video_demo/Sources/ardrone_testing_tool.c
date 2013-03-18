@@ -107,10 +107,10 @@ int main (int argc, char *argv[])
         }
     }
 
-    return ardrone_tool_main (prevargc, prevargv);
+    return ardrone_tool_main(prevargc, prevargv);
 }
 
-C_RESULT ardrone_tool_init_custom (void)
+C_RESULT ardrone_tool_init_custom(void)
 {
     /**
      * Set application default configuration
@@ -264,9 +264,6 @@ C_RESULT ardrone_tool_init_custom (void)
     /**
      * Start the video thread (and the video recorder thread for AR.Drone 2)
      */
-    START_THREAD(wiimote, NULL);
-    START_THREAD(score_logic, NULL);
-    
     START_THREAD(video_stage, params);
     START_THREAD (video_recorder, NULL);
     video_stage_init();
@@ -277,11 +274,16 @@ C_RESULT ardrone_tool_init_custom (void)
     }
     video_stage_resume_thread();
     
+    //King of the Hill threads
+    START_THREAD(wiimote, NULL);
+    START_THREAD(score_logic, NULL);
+    
     return C_OK;
 }
 
-C_RESULT ardrone_tool_shutdown_custom ()
-{
+C_RESULT ardrone_tool_shutdown_custom (){
+    
+    //King of the Hill threads
     JOIN_THREAD(wiimote);
     JOIN_THREAD(score_logic);
     
@@ -296,8 +298,8 @@ C_RESULT ardrone_tool_shutdown_custom ()
     return C_OK;
 }
 
-bool_t ardrone_tool_exit ()
-{
+bool_t ardrone_tool_exit (){
+    
     return exit_program == 0;
 }
 

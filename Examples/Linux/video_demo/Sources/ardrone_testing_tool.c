@@ -523,11 +523,11 @@ DEFINE_THREAD_ROUTINE(score_logic, data){
         if(enemy_add_score){
             printf("DRONE WOUNDED!!\n");
             //nanosleep(&shot_rumble_time, NULL);
-            //if(drone_score > 0){
+            if(drone_score > 0){
                 drone_score--;
                 printf("DRONE SCORE: \n");
                 drone_wounded = 1;
-            //}
+            }
            enemy_add_score = 0;
         }
         vp_os_mutex_unlock(&drone_wound_mutex);

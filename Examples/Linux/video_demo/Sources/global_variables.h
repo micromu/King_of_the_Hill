@@ -44,3 +44,8 @@ int active_cam = 0; //who set this?
 int drone_score = 10;
 int enemy_score = 10;
 
+vp_os_mutex_t drone_add_score_mutex = PTHREAD_MUTEX_INITIALIZER;
+vp_os_mutex_t enemy_add_score_mutex = PTHREAD_MUTEX_INITIALIZER;
+int drone_add_score = 0;
+int enemy_add_score = 0;
+

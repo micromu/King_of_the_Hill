@@ -3,8 +3,6 @@
 #include <highgui.h>
 //ardrone_tool_configuration is needed for the camera switch
 #include <ardrone_tool/ardrone_tool_configuration.h>
-//ardrone_api is needed for led animation
-#include <Soft/Common/ardrone_api.h>
 
 
 //TODO: this if to send comand to the drone. You should move this where the drone threads are
@@ -21,12 +19,14 @@
 // Extern so we can make the ardrone_tool_exit() function (ardrone_testing_tool.c)
 // return TRUE when we close the video window
 extern int exit_program;
+extern int match;
+extern int game_active;
 
 //King of the Hill variables
 //TODO: move this somewhere else, where it's easier to modify them
 int MIN_H_HILL_1 = 0;
 int MAX_H_HILL_1 = 15;
-int MIN_S_HILL = 150;
+int MIN_S_HILL = 50;//150;
 int MAX_S_HILL = 255;
 int MIN_V_HILL = 15;
 int MAX_V_HILL = 255;
@@ -35,7 +35,7 @@ CvPoint coordinatesOfHillCenter;
 
 
 //recognize a red ball up until now
-void recognizeHills(IplImage* frame){
+IplImage* recognizeHills(IplImage* frame){
     
     //-----PHASE 1: DATA SETTING-----//
     
@@ -55,6 +55,7 @@ void recognizeHills(IplImage* frame){
     cvInRangeS(imgHSV, cvScalar(357, MIN_S_HILL,MIN_V_HILL, 0), cvScalar(360, MAX_S_HILL, MAX_V_HILL, 0), imgThresholded2); //magenta-red
     cvOr(imgThresholded, imgThresholded2, imgThresholded, 0);
     
+    cvReleaseImage(&imgHSV);
     
     //-----PHASE 3: SHAPE DETECTION-----//
     
@@ -63,7 +64,7 @@ void recognizeHills(IplImage* frame){
     //TODO: trying to filter some noise out. This has to be improved!
     cvErode(imgThresholded, imgThresholded, 0, 1);
     cvDilate(imgThresholded, imgThresholded, 0, 2);
-    cvSmooth( imgThresholded, imgThresholded, CV_GAUSSIAN, 15, 15, 0, 0 );
+    cvSmooth(imgThresholded, imgThresholded, CV_GAUSSIAN, 15, 15, 0, 0);
     
     //cvHoughCircles(source, circle storage, CV_HOUGH_GRADIENT, resolution, minDist, higher threshold, accumulator threshold, minRadius, maxRadius)
     //minDist = minimum distance between centers of neighborghood detected circles
@@ -95,13 +96,14 @@ void recognizeHills(IplImage* frame){
     
     //-----PHASE 5: FREEING MEMORY-----//
     
-    cvReleaseImage(&imgHSV);
-    cvReleaseImage(&imgThresholded);
+    //cvReleaseImage(&imgThresholded);
     cvReleaseImage(&imgThresholded2);
     
     cvClearSeq(circles);
     cvClearMemStorage(storage);
     cvReleaseMemStorage(&storage);
+    
+    return imgThresholded;
 }
 
 
@@ -109,9 +111,11 @@ void recognizeHills(IplImage* frame){
 void show_gui(uint8_t* frame){
     IplImage *img = cvCreateImageHeader(cvSize(640, 360), IPL_DEPTH_8U, 3);
     img->imageData = frame;
-    cvCvtColor(img, img, CV_RGB2BGR);
     
-    recognizeHills(img);
+    IplImage *bla = recognizeHills(img);
+    
+    //This is to do after the hill and enemy detection because otherwise they won't work
+    cvCvtColor(img, img, CV_BGR2RGB);
     
     CvFont font;
     cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 1.0f, 1.0f, 0, 1, CV_AA);
@@ -120,28 +124,34 @@ void show_gui(uint8_t* frame){
     
     //cvNamedWindow("video", CV_WINDOW_AUTOSIZE); //this will show a blank window!!!
     cvShowImage("Video", img);
+    cvShowImage("Thresh", bla);
     
     int keyboard_input = cvWaitKey(1); //we wait 20ms and if something is pressed during this time, it 'goes' in c
     ZAP_VIDEO_CHANNEL channel = ZAP_CHANNEL_NEXT;
     
+    //TODO: add every case that you need
     switch((char)keyboard_input){
         case 27://esc
-            printf("QUTTING!!!!\n");
+
+            printf("The program will shutdown...\n");
+            
+            match = 0; //This tell the drone_logic thread to land the drone
+            game_active = 0; //This make all the threads exit the while loop
+            
             exit_program = 0;  // Force ardrone_tool to close
-            // Sometimes, ardrone_tool might not finish properly
-            // This happens mainly because a thread is blocked on a syscall
-            // in this case, wait 5 seconds then kill the app
+            // Sometimes, ardrone_tool might not finish properly. 
+            //This happens mainly because a thread is blocked on a syscall, in this case, wait 5 seconds then kill the app
             sleep(5);
             exit(0);
+            
             break;
-        case 108: //l
-            ardrone_at_set_led_animation(BLINK_GREEN_RED, 0.25, 4);
+        case 108: //l, as in land
+            //TODO: set the land variable to 1
             break;
-        case 116: //t, for take off
+        case 116: //t, as in take off
             //TODO: set the take_off variables to 1
-            //ardrone_at_zap(channel);
+        case 122: //z, as in zap channel
             ARDRONE_TOOL_CONFIGURATION_ADDEVENT(video_channel, &channel, NULL);
-            //TODO: add every case that you need
     }
     
     cvReleaseImage(&img);

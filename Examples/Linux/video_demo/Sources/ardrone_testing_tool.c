@@ -49,6 +49,10 @@
 //King of the Hill
 #include "global_variables.h"
 #include <cwiid.h>
+//ardrone_api is needed for led animation
+#include <Soft/Common/ardrone_api.h>
+//ardrone_input is needed for drone movement
+#include <ardrone_tool/UI/ardrone_input.h>
 
 int exit_program = 1;
 
@@ -275,7 +279,7 @@ C_RESULT ardrone_tool_init_custom(void)
     video_stage_resume_thread();
     
     //King of the Hill threads
-    START_THREAD(wiimote, NULL);
+    START_THREAD(wiimote_logic, NULL);
     START_THREAD(score_logic, NULL);
     
     return C_OK;
@@ -284,7 +288,7 @@ C_RESULT ardrone_tool_init_custom(void)
 C_RESULT ardrone_tool_shutdown_custom (){
     
     //King of the Hill threads
-    JOIN_THREAD(wiimote);
+    JOIN_THREAD(wiimote_logic);
     JOIN_THREAD(score_logic);
     
     video_stage_resume_thread(); //Resume thread to kill it !
@@ -340,25 +344,27 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
             if(drone_wounded){
                 //TODO: make the drone move as if it was being shot
                 //maybe this should be moved in the flying thread
+                vp_os_mutex_lock(&drone_wound_mutex);
+                    drone_wounded = 0;
+                    vp_os_mutex_unlock(&drone_wound_mutex);
+                //TODO: freeze the drone, also?
+                ardrone_at_set_led_animation(BLINK_GREEN_RED, 0.25, 4);
             }
             
-            //MATCH OVER
+        //MATCH OVER
         } else {
-            //TODO: land the drone
+            //land the drone
+            ardrone_at_set_progress_cmd(0,0,0,0,0);
+            ardrone_tool_set_ui_pad_start(0);
         }
     }
     
     return C_OK;
 }
 
-DEFINE_THREAD_ROUTINE(fly_control, data){
-    //TODO: I REALLY NEED THIS?
-    return C_OK;
-}
-
-DEFINE_THREAD_ROUTINE(wiimote, data){
-    int bullets = magazine_capacity;
+DEFINE_THREAD_ROUTINE(wiimote_logic, data){
     
+    //wiimote connection variables
     static bdaddr_t bdaddr = {0};
     static cwiid_wiimote_t *wiimote = NULL;
     union cwiid_mesg *msg = NULL;
@@ -371,19 +377,18 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
     int number_of_led = 0;
     int recharger_in_sight = 0;
     int recharging_button = 0;
+    
+    int bullets = magazine_capacity;
+    
     int i = 0;
     int j = 0;
     int msg_count = 0;
     
-    struct timespec shot_rumble_time; //TODO: give it a proper name!
+    struct timespec shot_rumble_time;
     shot_rumble_time.tv_sec = 1;
     shot_rumble_time.tv_nsec = 0000000;
     
     while(game_active){
-        
-        number_of_led = 0;
-        recharger_in_sight = 0;
-        
         
         //CONNECT TO THE WIIMOTE
         if(wiimote_connected == 0) {
@@ -398,96 +403,105 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
             
         //ALREADY CONNECTED
         } else {
-            
-            //--- GET INPUTS FROM THE WIIMOTE ---//
-            
-            //get messages (blocking)
-            cwiid_get_mesg(wiimote, &msg_count, &msg, &timestamp);
-            
-            //scan the messages for the event "pression of trigger_button" or "pression of recharging_button"
-            //and to count the number of IR leds found (4 leds == recharge, other == drone 
-            //TODO: define the number of leds for the drone)
-            //TODO: the wiimote find false positive (sometimes 1led == 4leds :O)
-            //TODO: the wiimote is REALLY sensitive to sun light, I may have to rethink the recharging routine
-            for(i = 0; i < msg_count; i++){
+            if(/*match*/1){ //uncoment when match  will be fully implemented
                 
-                if(msg[i].type == CWIID_MESG_BTN){
+                //--- RESET VARIABLES ---//
+                number_of_led = 0;
+                drone_in_sight = 0;
+                recharger_in_sight = 0;
+                trigger_button = 0;
+                msg_count = 0;
+                
+                //--- GET INPUTS FROM THE WIIMOTE ---//
+                
+                //get messages (blocking)
+                cwiid_get_mesg(wiimote, &msg_count, &msg, &timestamp);
+                
+                //scan the messages for the event "pression of trigger_button" or "pression of recharging_button"
+                //and to count the number of IR leds found
+                //TODO: define the number of leds for the drone
+                //NOTE: the wiimote find false positive (sometimes 1led == 4leds :O)
+                //TODO: the wiimote is REALLY sensitive to sun light, I may have to rethink the recharging routine
+                for(i = 0; i < msg_count; i++){
                     
-                    //is button B pressed?
-                    if(msg[i].btn_mesg.buttons == CWIID_BTN_B){
-                        trigger_button = 1;
-                        printf("SHOOT\n");
-                    } else {
-                        trigger_button = 0;
+                    if(msg[i].type == CWIID_MESG_BTN){
+                        
+                        //is button B pressed?
+                        if(msg[i].btn_mesg.buttons == CWIID_BTN_B){
+                            trigger_button = 1;
+                            printf("SHOOT\n");
+                        } else {
+                            trigger_button = 0;
+                        }
+                        
+                        //is button A pressed?
+                        if(msg[i].btn_mesg.buttons == CWIID_BTN_A){
+                            recharging_button = 1;
+                            printf("BUTTON A\n");
+                        } else {
+                            recharging_button = 0;
+                        }
+                        
                     }
                     
-                    //is button A pressed?
-                    if(msg[i].btn_mesg.buttons == CWIID_BTN_A){
-                        recharging_button = 1;
-                        printf("BUTTON A\n");
-                    } else {
-                        recharging_button = 0;
-                    }
-                    
-                }
-                
-                //NOTE: the wiimote find also hot source of light and the sun!!
-                //are there leds?
-                if(msg[i].type == CWIID_MESG_IR){ 
-                    for(j = 0; j < CWIID_IR_SRC_COUNT; j++){
-                        if(msg[i].ir_mesg.src[j].valid != 0){
-                            number_of_led++;
+                    //NOTE: the wiimote find also hot source of light and the sun!!
+                    //are there leds?
+                    if(msg[i].type == CWIID_MESG_IR){ 
+                        for(j = 0; j < CWIID_IR_SRC_COUNT; j++){
+                            if(msg[i].ir_mesg.src[j].valid != 0){
+                                number_of_led++;
+                            }
+                        }
+                        
+                        //TODO: I have problem with the recognition of a fixed amount of leds
+                        if(number_of_led > 0){
+                            printf("LEDS\n");
+                            drone_in_sight = 1;
+                            //TODO: this is logically wrong, but is just to test it
+                            recharger_in_sight = 1;
+                        } else {
+                            drone_in_sight = 0;
                         }
                     }
+                }
+                
+                //--- WIIMOTE LOGIC ---//
+                //SHOOTING
+                if((bullets > 0) && trigger_button){
                     
-                    //TODO: I have problem with the recognition of a fixed amount of leds
-                    if(number_of_led > 0){
-                        printf("LEDS\n");
-                        drone_in_sight = 1;
-                        //TODO: this is logically wrong, but is just to test it
-                        recharger_in_sight = 1;
-                    } else {
-                        drone_in_sight = 0;
-                    }
-                }
-            }
-            
-            //--- WIIMOTE LOGIC ---//
-            //SHOOTING
-            if((bullets > 0) && trigger_button){
-                
-                bullets--;
-                printf("lost one bullet\n");
-                
-                //haptic feedback
-                cwiid_command(wiimote, CWIID_CMD_RUMBLE, 1);
-                nanosleep(&shot_rumble_time, NULL);
-                cwiid_command(wiimote, CWIID_CMD_RUMBLE, 0);
-                
-                if(drone_in_sight){
-                    printf("DRONE COLPITO\n");
-                    drone_in_sight = 0; //TODO: not sure if necessary...
-                    //if drone_wounded == 1, the logic haven't calculate the previous score yet
-                    //TODO: I may set a wayting period between two consecutive shoot to prevent this...
-                    vp_os_mutex_lock(&drone_wound_mutex);
-                        drone_wounded = 1;
-                    vp_os_mutex_unlock(&drone_wound_mutex);
+                    bullets--;
+                    printf("lost one bullet\n");
+                    
+                    //haptic feedback
+                    cwiid_command(wiimote, CWIID_CMD_RUMBLE, 1);
                     nanosleep(&shot_rumble_time, NULL);
-                } else {
-                    printf("DRONE MISSED!!\n");
-                }
-                
-                trigger_button = 0;
-            
-            //you can recharge only if you don't have bullets any more
-            } else if(bullets < 1){
-                
-                printf("    PROIETTILI TERMINATI   \n");
-                //TODO: do I need to repeat somehow the information that the user doesn't have bullets anymore?
-                //or the fact that there aren't any more led on is enough?
-                if(recharger_in_sight && recharging_button){
-                    //TODO: do some fancy animation and wait tot secs
-                    bullets = magazine_capacity;
+                    cwiid_command(wiimote, CWIID_CMD_RUMBLE, 0);
+                    
+                    if(drone_in_sight){
+                        
+                        vp_os_mutex_lock(&drone_wound_mutex);
+                            enemy_add_score = 1;
+                        vp_os_mutex_unlock(&drone_wound_mutex);
+                        
+                        printf("DRONE HIT\n");
+                        
+                    } else {
+                        printf("DRONE MISSED!!\n");
+                    }
+                    
+                    //This is to limit the frequency of shooting (i.e. the gun need to load)
+                    nanosleep(&shot_rumble_time, NULL);
+                    
+                //you can recharge only if you don't have bullets any more
+                } else if(bullets < 1){
+                    //TODO: I don't know if it is necessary to switch off the leds or something similar, 
+                    //or the fact that the wiimote doesn't rumble anymore is enough
+                    //cwiid_command(wiimote, CWIID_CMD_LED, !(CWIID_LED1_ON|CWIID_LED2_ON|CWIID_LED3_ON|CWIID_LED4_ON));
+                    
+                    if(recharger_in_sight && recharging_button){
+                        //TODO: do some fancy animation and wait tot secs
+                        bullets = magazine_capacity;
+                    }
                 }
             }
         }
@@ -499,23 +513,22 @@ DEFINE_THREAD_ROUTINE(wiimote, data){
 DEFINE_THREAD_ROUTINE(score_logic, data){
     
     struct timespec shot_rumble_time; //TODO: give it a proper name!
-    shot_rumble_time.tv_sec = 5;
+    shot_rumble_time.tv_sec = 1;
     shot_rumble_time.tv_nsec = 0000000;
     
     while(game_active){
+        
         vp_os_mutex_lock(&drone_wound_mutex);
-        if(drone_wounded){
-            //NOTE: Now it works but I don't know why... anyway it is really hard to shoot to the drone
-            // I suspect that it is because the wiimote thread cycle too fast. 
-            //If it is the case I may want to set a sleep in the wiimote thread somewhere
+        
+        if(enemy_add_score){
             printf("DRONE WOUNDED!!\n");
-            nanosleep(&shot_rumble_time, NULL);
+            //nanosleep(&shot_rumble_time, NULL);
             //if(drone_score > 0){
                 drone_score--;
                 printf("DRONE SCORE: \n");
-                drone_wounded = 0;
+                drone_wounded = 1;
             //}
-           
+           enemy_add_score = 0;
         }
         vp_os_mutex_unlock(&drone_wound_mutex);
     }
@@ -533,8 +546,7 @@ THREAD_TABLE_ENTRY(video_recorder, 20)
 THREAD_TABLE_ENTRY(navdata_update, 20)
 THREAD_TABLE_ENTRY(ardrone_control, 20)
 THREAD_TABLE_ENTRY(drone_logic, 20)
-THREAD_TABLE_ENTRY(fly_control, 20)
-THREAD_TABLE_ENTRY(wiimote, 20)
+THREAD_TABLE_ENTRY(wiimote_logic, 20)
 THREAD_TABLE_ENTRY(score_logic, 20)
 END_THREAD_TABLE
 

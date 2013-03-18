@@ -280,6 +280,7 @@ C_RESULT ardrone_tool_init_custom(void)
     
     //King of the Hill threads
     START_THREAD(wiimote_logic, NULL);
+    START_THREAD(drone_logic, NULL);
     START_THREAD(score_logic, NULL);
     
     return C_OK;
@@ -289,6 +290,7 @@ C_RESULT ardrone_tool_shutdown_custom (){
     
     //King of the Hill threads
     JOIN_THREAD(wiimote_logic);
+    JOIN_THREAD(drone_logic);
     JOIN_THREAD(score_logic);
     
     video_stage_resume_thread(); //Resume thread to kill it !
@@ -310,8 +312,13 @@ bool_t ardrone_tool_exit (){
 //NEW THREADS ADDED BY ME
 DEFINE_THREAD_ROUTINE(drone_logic, data){
     //the game is active from start, but the logic will start only when a match is active
+    
+    struct timespec shot_rumble_time;
+    shot_rumble_time.tv_sec = 1;
+    shot_rumble_time.tv_nsec = 0000000;
+    
     while(game_active){
-        if(match){
+        if(/*match*/1){
             
             //CHASING - N.B. hill have higher priority than enemy
             if(hill_in_sight){
@@ -340,13 +347,20 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 //TODO: nothing in sight: hover and start the locator algorithm
             }
             
+            //NOTE: I don't know why, but if I add this printf the condition below works
+            printf(drone_wounded);
+            
             //HIT
             if(drone_wounded){
+                
+                printf("INSIDE HIT\n");
                 //TODO: make the drone move as if it was being shot
                 //maybe this should be moved in the flying thread
                 vp_os_mutex_lock(&drone_wound_mutex);
                     drone_wounded = 0;
-                    vp_os_mutex_unlock(&drone_wound_mutex);
+                vp_os_mutex_unlock(&drone_wound_mutex);
+                printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
+                nanosleep(&shot_rumble_time, NULL);
                 //TODO: freeze the drone, also?
                 ardrone_at_set_led_animation(BLINK_GREEN_RED, 0.25, 4);
             }
@@ -479,9 +493,9 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                     
                     if(drone_in_sight){
                         
-                        vp_os_mutex_lock(&drone_wound_mutex);
+                        vp_os_mutex_lock(&enemy_add_score_mutex);
                             enemy_add_score = 1;
-                        vp_os_mutex_unlock(&drone_wound_mutex);
+                        vp_os_mutex_unlock(&enemy_add_score_mutex);
                         
                         printf("DRONE HIT\n");
                         
@@ -512,25 +526,25 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
 
 DEFINE_THREAD_ROUTINE(score_logic, data){
     
-    struct timespec shot_rumble_time; //TODO: give it a proper name!
-    shot_rumble_time.tv_sec = 1;
-    shot_rumble_time.tv_nsec = 0000000;
-    
     while(game_active){
         
-        vp_os_mutex_lock(&drone_wound_mutex);
+        vp_os_mutex_lock(&enemy_add_score_mutex);
         
         if(enemy_add_score){
             printf("DRONE WOUNDED!!\n");
-            //nanosleep(&shot_rumble_time, NULL);
+            
             if(drone_score > 0){
                 drone_score--;
                 printf("DRONE SCORE: \n");
-                drone_wounded = 1;
+                vp_os_mutex_lock(&drone_wound_mutex);
+                    drone_wounded = 1;
+                vp_os_mutex_unlock(&drone_wound_mutex);
             }
+            
            enemy_add_score = 0;
         }
-        vp_os_mutex_unlock(&drone_wound_mutex);
+        
+        vp_os_mutex_unlock(&enemy_add_score_mutex);
     }
     
     return C_OK;

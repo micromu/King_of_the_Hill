@@ -21,6 +21,10 @@
 extern int exit_program;
 extern int match;
 extern int game_active;
+extern int drone_score;
+extern int enemy_score;
+extern vp_os_mutex_t enemy_score_mutex;
+extern vp_os_mutex_t drone_score_mutex;
 
 //King of the Hill variables
 //TODO: move this somewhere else, where it's easier to modify them
@@ -120,7 +124,25 @@ void show_gui(uint8_t* frame){
     CvFont font;
     cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 1.0f, 1.0f, 0, 1, CV_AA);
     
-    cvPutText(img, "PROVA", cvPoint(30,30), &font, CV_RGB(255,0,0));
+    //---- THIS PRINT THE SCORE OVER THE VIDEO ----//
+    char drone_score_label[16] = "Drone score: "; //You have to create this string big enough to add the score, otherwise...buffer overflow!!
+    char enemy_score_label[17] = "Player score: "; //Also, this
+    char enemy_score_value[3];
+    char drone_score_value[3];
+    
+    vp_os_mutex_lock(&drone_score_mutex);
+        sprintf(drone_score_value, "%i", drone_score);
+    vp_os_mutex_unlock(&drone_score_mutex);
+    
+    vp_os_mutex_lock(&enemy_score_mutex);
+        sprintf(enemy_score_value, "%i", enemy_score);
+    vp_os_mutex_unlock(&enemy_score_mutex);
+    
+    strcat(drone_score_label, drone_score_value);
+    strcat(enemy_score_label, enemy_score_value);
+    
+    cvPutText(img, drone_score_label, cvPoint(30,30), &font, CV_RGB(255,0,0));
+    cvPutText(img, enemy_score_label, cvPoint(350,30), &font, CV_RGB(0,255,0));
     
     //cvNamedWindow("video", CV_WINDOW_AUTOSIZE); //this will show a blank window!!!
     cvShowImage("Video", img);
@@ -147,6 +169,8 @@ void show_gui(uint8_t* frame){
             break;
         case 108: //l, as in land
             //TODO: this is here only for test purpose, should be removed before completion
+            //ardrone_at_set_progress_cmd(0,0,0,0,0);
+            //ardrone_tool_set_ui_pad_start(0);
             break;
         case 115: //s, as start match
             match = 1;
@@ -154,6 +178,8 @@ void show_gui(uint8_t* frame){
             break;
         case 116: //t, as in take off
             //TODO: this is here only for test purpose, should be removed before completion
+            //ardrone_tool_set_ui_pad_start(1);
+            //ardrone_at_set_progress_cmd(0,0,0,0,0);
         case 122: //z, as in zap channel
             //TODO: this is here only for test purpose, should be removed before completion
             ARDRONE_TOOL_CONFIGURATION_ADDEVENT(video_channel, &channel, NULL);

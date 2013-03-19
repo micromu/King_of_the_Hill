@@ -515,9 +515,9 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                     
                     if(drone_in_sight){
                         
-                        vp_os_mutex_lock(&enemy_add_score_mutex);
+                        vp_os_mutex_lock(&drone_score_mutex);
                             enemy_add_score = 1;
-                        vp_os_mutex_unlock(&enemy_add_score_mutex);
+                        vp_os_mutex_unlock(&drone_score_mutex);
                         
                         printf("DRONE HIT\n");
                         
@@ -550,7 +550,7 @@ DEFINE_THREAD_ROUTINE(score_logic, data){
     
     while(game_active){
         
-        vp_os_mutex_lock(&enemy_add_score_mutex);
+        vp_os_mutex_lock(&drone_score_mutex);
         
         if(enemy_add_score){
             printf("DRONE WOUNDED!!\n");
@@ -566,7 +566,7 @@ DEFINE_THREAD_ROUTINE(score_logic, data){
            enemy_add_score = 0;
         }
         
-        vp_os_mutex_unlock(&enemy_add_score_mutex);
+        vp_os_mutex_unlock(&drone_score_mutex);
     }
     
     return C_OK;

@@ -146,11 +146,16 @@ void show_gui(uint8_t* frame){
             
             break;
         case 108: //l, as in land
-            //TODO: set the land variable to 1
+            //TODO: this is here only for test purpose, should be removed before completion
+            break;
+        case 115: //s, as start match
+            match = 1;
+            //TODO: set the take_off variables to 1, maybe the match variable is enough
             break;
         case 116: //t, as in take off
-            //TODO: set the take_off variables to 1
+            //TODO: this is here only for test purpose, should be removed before completion
         case 122: //z, as in zap channel
+            //TODO: this is here only for test purpose, should be removed before completion
             ARDRONE_TOOL_CONFIGURATION_ADDEVENT(video_channel, &channel, NULL);
     }
     

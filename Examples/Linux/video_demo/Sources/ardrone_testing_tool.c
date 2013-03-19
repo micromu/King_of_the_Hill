@@ -318,7 +318,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
     shot_rumble_time.tv_nsec = 0000000;
     
     while(game_active){
-        if(/*match*/1){
+        if(match){
             
             //CHASING - N.B. hill have higher priority than enemy
             if(hill_in_sight){
@@ -352,17 +352,39 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
             
             //HIT
             if(drone_wounded){
-                
-                printf("INSIDE HIT\n");
                 //TODO: make the drone move as if it was being shot
                 //maybe this should be moved in the flying thread
                 vp_os_mutex_lock(&drone_wound_mutex);
                     drone_wounded = 0;
                 vp_os_mutex_unlock(&drone_wound_mutex);
-                printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
-                nanosleep(&shot_rumble_time, NULL);
-                //TODO: freeze the drone, also?
+                
+                //TODO: you can choose between this animation, defined in Soft/Common/config.h
+                /*ARDRONE_ANIM_PHI_M30_DEG= 0,
+                 A RDRONE_ANIM_PHI_30_DE*G,
+                 ARDRONE_ANIM_THETA_M30_DEG,
+                 ARDRONE_ANIM_THETA_30_DEG,
+                 ARDRONE_ANIM_THETA_20DEG_YAW_200DEG,
+                 ARDRONE_ANIM_THETA_20DEG_YAW_M200DEG,
+                 ARDRONE_ANIM_TURNAROUND,
+                 ARDRONE_ANIM_TURNAROUND_GODOWN,
+                 ARDRONE_ANIM_YAW_SHAKE,
+                 ARDRONE_ANIM_YAW_DANCE,
+                 ARDRONE_ANIM_PHI_DANCE,
+                 ARDRONE_ANIM_THETA_DANCE,
+                 ARDRONE_ANIM_VZ_DANCE,
+                 ARDRONE_ANIM_WAVE,
+                 ARDRONE_ANIM_PHI_THETA_MIXED,
+                 ARDRONE_ANIM_DOUBLE_PHI_THETA_MIXED,
+                 ARDRONE_ANIM_FLIP_AHEAD,
+                 ARDRONE_ANIM_FLIP_BEHIND,
+                 ARDRONE_ANIM_FLIP_LEFT,
+                 ARDRONE_ANIM_FLIP_RIGHT,
+                 ARDRONE_NB_ANIM_MAYDAY*/
+                //anim_mayday_t param;
+                //ARDRONE_TOOL_CONFIGURATION_ADDEVENT (flight_anim, param, myCallback);
                 ardrone_at_set_led_animation(BLINK_GREEN_RED, 0.25, 4);
+                //TODO: freeze the drone for some time, also?
+                //nanosleep(&shot_rumble_time, NULL);
             }
             
         //MATCH OVER
@@ -417,7 +439,7 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
             
         //ALREADY CONNECTED
         } else {
-            if(/*match*/1){ //uncoment when match  will be fully implemented
+            if(match){
                 
                 //--- RESET VARIABLES ---//
                 number_of_led = 0;

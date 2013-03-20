@@ -9,6 +9,7 @@
 
 #define magazine_capacity 5
 
+
 //DRONE LOGIC
 //These flags are set by the gtk thread
 int game_active = 1;
@@ -16,8 +17,8 @@ int match = 0;
 //These flags are set in the video stream analisys
 int hill_in_sight = 0;
 int enemy_in_sight = 0;
-int hill_distance = 0;
-int enemy_distance = 0;
+int hill_distance = 0; //this is expressed in cm
+int enemy_distance = 0; //this is expressed in cm
 int hill_offset_from_center = 0;
 int enemy_offset_from_center = 0;
 int drone_above_hill = 0; //the drone is above the target hill

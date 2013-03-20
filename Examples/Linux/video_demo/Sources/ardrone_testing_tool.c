@@ -313,9 +313,9 @@ bool_t ardrone_tool_exit (){
 DEFINE_THREAD_ROUTINE(drone_logic, data){
     //the game is active from start, but the logic will start only when a match is active
     
-    struct timespec shot_rumble_time;
-    shot_rumble_time.tv_sec = 1;
-    shot_rumble_time.tv_nsec = 0000000;
+    //struct timespec shot_rumble_time;
+    //shot_rumble_time.tv_sec = 1;
+    //shot_rumble_time.tv_nsec = 0000000;
     
     while(game_active){
         if(match){

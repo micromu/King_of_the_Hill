@@ -129,7 +129,7 @@ IplImage* testingVision(IplImage* frame){
     
     cvClearSeq(circles);
     cvClearMemStorage(storage);
-    cvReleaseMemStorage(&storage);*/
+    cvReleaseMemStorage(&storage);
     
     return imgThresholded;
 }
@@ -259,7 +259,7 @@ void recognizeEnemy(IplImage* frame){
     cvReleaseImage(&imgHSV);
     cvReleaseImage(&imgThresholded);
     
-    if(contour != NULL){
+    if(contours != NULL){
         cvClearSeq(contours);
     }
     if(result != NULL){

@@ -316,39 +316,117 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
     //struct timespec shot_rumble_time;
     //shot_rumble_time.tv_sec = 1;
     //shot_rumble_time.tv_nsec = 0000000;
+    int hovering = 0; //0 hover, 1 move
+    float phi = 0.0; //left/right angle. Between [-1.0,+1.0], with negatives being leftward movement
+    float theta = 0.0; //front/back angle. Between [-1.0, +1.0], with negatives being frontward movement
+    float gaz = 0.0; //vertical speed. Between [-1.0, +1.0]
+    float yaw = 0.0; //Angular speed. Between [-1.0, +1.0]
     
     while(game_active){
         if(match){
             
-            //CHASING - N.B. hill have higher priority than enemy
+            //--- CHASING ---//
+            //NOTE: Hill have higher priority than enemy
             if(hill_in_sight){
                 //move toward the hill
-                if((hill_distance > hill_min_distance) && (hill_distance < hill_max_distance)){
-                    //TODO: collina a distanza ragionevole. avvicinati
+                if((hill_distance > HILL_MIN_DISTANCE) && (hill_distance < HILL_MAX_DISTANCE)){
                     
-                    //hover over the hill
-                } else if(hill_distance < hill_min_distance) {
-                    //TODO: inizia la procedura di riconoscimento collina (cambia cam, hover...)
-                    //set a variable to tell the score logic to add one for the drone
+                    hovering = 1;
+                    
+                    //--- SET THE YAW ---//
+                    //This is to correct the direction of the drone
+                    if(abs(hill_offset_from_center) > ERROR_FROM_CENTER_FOR_HILL){
+                        //TODO: find the right multiplier for yaw and discover wich way the drone turn
+                        yaw = (hill_offset_from_center) * YAW_COEFF; //YAW_COEFF = 0.007
+                        //yaw has to be between -1.0 and +1.0
+                        if(yaw > 1.0) {
+                            yaw = 1.0;
+                        } else if(yaw < -1.0){
+                            yaw = -1.0;
+                        }
+                    }
+                    
+                    //--- SET THE APPROCING SPEED ---//
+                    //The closer the drone is to the hill, the slower it goes
+                    /*
+                     theta = -1*((hill_distance) / THETA_COEFF); //inversamente proporzionale. //Need to be negative to move forward
+                     //with -1.0 being frontward movement (drone bend frontward)
+                     if(theta > 0.0) { //TODO: this need to be better defined.
+                         theta = 0.0;
+                     } else if(theta < -1.0){ 
+                         theta = -1.0;
+                     }
+                    */
+                    
+                    //TODO: this has to be here or to be moved somewhere else? maybe right after this big if?
+                    //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
+                    
+                //hover over the hill
+                } else if(hill_distance < HILL_MIN_DISTANCE) {
+                    //ardrone_at_set_progress_cmd(0,0,0,0,0); //to hover
+                    hovering = 0;
+                    phi = 0.0;
+                    theta = 0.0;
+                    gaz = 0.0;
+                    yaw = 0.0;
+                    
+                    //TODO: if you are close enough, you have to switch the cam and then inizialize 
+                    //the recognition procedure. (wait tot secs)
+                    vp_os_mutex_lock(&drone_score_mutex);
+                        drone_add_score = 1;
+                    vp_os_mutex_unlock(&drone_score_mutex);
+                    //TODO: here, you switch the camera back
                 }
+                
             } else if(enemy_in_sight){
-                if(enemy_distance < enemy_min_distance){
-                    //TODO: too close!! back up
+                //back up! Too close to the enemy (we don't want to phisically hit the human player!)
+                if(enemy_distance < ENEMY_MIN_DISTANCE){
+                    hovering = 1;
+                    theta = 1.0; //Move backward at maximum speed
                     
+                } else if((enemy_distance > ENEMY_MIN_DISTANCE) && (enemy_distance < ENEMY_SHOOTING_DISTANCE)){
+                    //TODO: shoot!!
                     //TODO: implements a good algorithm that choose when to shoot and when not
                     // e.g. after some time (or randomly), the drone should stop shooting and/or chasing the enemy
-                } else if((enemy_distance > enemy_min_distance) && (enemy_distance < enemy_shooting_distance)){
-                    //TODO: shoot!!
+                    //just correct yaw
                     
-                } else if((enemy_distance > enemy_shooting_distance) && (enemy_distance < enemy_max_distance)){
+                    hovering = 0;
+                    
+                    //--- SET THE YAW ---//
+                    //This is to correct the direction of the drone
+                    if(abs(enemy_offset_from_center) > ERROR_FROM_CENTER_FOR_ENEMY){
+                        //TODO: find the right multiplier for yaw and discover wich way the drone turn
+                        yaw = (enemy_offset_from_center) * YAW_COEFF; //YAW_COEFF = 0.007
+                        //yaw has to be between -1.0 and +1.0
+                        if(yaw > 1.0) {
+                            yaw = 1.0;
+                        } else if(yaw < -1.0){
+                            yaw = -1.0;
+                        }
+                    }
+                    
+                } else if((enemy_distance > ENEMY_SHOOTING_DISTANCE) && (enemy_distance < ENEMY_MAX_DISTANCE)){
                     //TODO: move toward the enemy
+                    // e.g. after some time (or randomly), the drone should stop shooting and/or chasing the enemy
+                    //--- SET THE YAW ---//
+                    //This is to correct the direction of the drone
+                    if(abs(hill_offset_from_center) > ERROR_FROM_CENTER_FOR_HILL){
+                        //TODO: find the right multiplier for yaw and discover wich way the drone turn
+                        yaw = (hill_offset_from_center) * YAW_COEFF; //YAW_COEFF = 0.007
+                        //yaw has to be between -1.0 and +1.0
+                        if(yaw > 1.0) {
+                            yaw = 1.0;
+                        } else if(yaw < -1.0){
+                            yaw = -1.0;
+                        }
+                    }
                 }
             } else {
                 //TODO: nothing in sight: hover and start the locator algorithm
             }
             
             //NOTE: I don't know why, but if I add this printf the condition below works
-            printf(drone_wounded);
+            printf("%d",drone_wounded);
             
             //HIT
             if(drone_wounded){
@@ -390,7 +468,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
         //MATCH OVER
         } else {
             //land the drone
-            ardrone_at_set_progress_cmd(0,0,0,0,0);
+            ardrone_at_set_progress_cmd(0,0.0,0.0,0.0,0.0);
             ardrone_tool_set_ui_pad_start(0);
         }
     }
@@ -401,7 +479,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
 DEFINE_THREAD_ROUTINE(wiimote_logic, data){
     
     //wiimote connection variables
-    static bdaddr_t bdaddr = {0};
+    static bdaddr_t bdaddr = {{0}};
     static cwiid_wiimote_t *wiimote = NULL;
     union cwiid_mesg *msg = NULL;
     struct timespec timestamp;
@@ -549,22 +627,25 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
 DEFINE_THREAD_ROUTINE(score_logic, data){
     
     while(game_active){
-        
+        //TODO: when the enemy hit the drone, we should subtract one point to the drone score,
+        //add one point to the enemy score or freeze the drone? or a combination of the three?
         vp_os_mutex_lock(&drone_score_mutex);
         
-        if(enemy_add_score){
-            printf("DRONE WOUNDED!!\n");
-            
-            if(drone_score > 0){
-                drone_score--;
-                printf("DRONE SCORE: \n");
-                vp_os_mutex_lock(&drone_wound_mutex);
-                    drone_wounded = 1;
-                vp_os_mutex_unlock(&drone_wound_mutex);
+            if(enemy_add_score){
+                if(drone_score > 0){
+                    drone_score--;
+                    vp_os_mutex_lock(&drone_wound_mutex);
+                        drone_wounded = 1;
+                    vp_os_mutex_unlock(&drone_wound_mutex);
+                } //TODO: else the drone is dead, game over!
+                
+                enemy_add_score = 0;
             }
-            
-           enemy_add_score = 0;
-        }
+        
+            if(drone_add_score){
+                drone_score++;
+                drone_add_score = 0;
+            }
         
         vp_os_mutex_unlock(&drone_score_mutex);
     }

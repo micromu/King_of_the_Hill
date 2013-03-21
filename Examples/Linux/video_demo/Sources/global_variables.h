@@ -1,13 +1,17 @@
 //CONSTANTS
 //TODO: find the right values
-#define hill_max_distance 50
-#define hill_min_distance 10
+#define HILL_MIN_DISTANCE 10
+#define HILL_MAX_DISTANCE 50
+#define ERROR_FROM_CENTER_FOR_HILL 5
 
-#define enemy_max_distance 50
-#define enemy_min_distance 20
-#define enemy_shooting_distance 30
+#define ENEMY_MIN_DISTANCE 20
+#define ENEMY_MAX_DISTANCE 50
+#define ENEMY_SHOOTING_DISTANCE 30
+#define ERROR_FROM_CENTER_FOR_ENEMY 5
 
 #define magazine_capacity 5
+
+#define YAW_COEFF 0.007
 
 
 //DRONE LOGIC

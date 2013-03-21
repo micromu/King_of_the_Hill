@@ -30,9 +30,11 @@ extern vp_os_mutex_t drone_score_mutex;
 
 extern int hill_distance;
 extern int enemy_distance;
+extern int hill_offset_from_center;
 static const int POINT_OF_FOCUS = 210; //TODO: This has to be checked!
 static const int HILL_REAL_RADIUS = 20; //TODO:This has to be checked!!
 static const int ENEMY_REAL_HEIGHT = 25; //TODO: This has to be checked!!
+static const int IMAGE_WIDTH = 640;
 
 //TODO: move this somewhere else, where it's easier to modify them
 /*int MIN_H_HILL_1 = 0;
@@ -42,8 +44,8 @@ int MAX_S_HILL = 255;
 int MIN_V_HILL = 15;
 int MAX_V_HILL = 255;*/
 //Yellow Baloon
-int MIN_H_HILL_1 = 15;
-int MAX_H_HILL_1 = 90;
+int MIN_H_HILL = 15;
+int MAX_H_HILL = 90;
 int MIN_S_HILL = 150;
 int MAX_S_HILL = 255;
 int MIN_V_HILL = 15;
@@ -76,10 +78,10 @@ IplImage* testingVision(IplImage* frame){
     
     //Threshold the image (i.e. black and white figure, with white being the object to detect)
     IplImage* imgThresholded = cvCreateImage(cvGetSize(imgHSV), IPL_DEPTH_8U, 1);
-    IplImage* imgThresholded2 = cvCreateImage(cvGetSize(imgHSV), IPL_DEPTH_8U, 1);
+    //IplImage* imgThresholded2 = cvCreateImage(cvGetSize(imgHSV), IPL_DEPTH_8U, 1);
     
     //To handle color wrap-around, two halves are detected and combined (for red color, otherwise we don't need this)
-    cvInRangeS(imgHSV, cvScalar(MIN_H_HILL_1, MIN_S_HILL, MIN_V_HILL, 0), cvScalar(MAX_H_HILL_1, MAX_S_HILL, MAX_V_HILL, 0), imgThresholded); //red-yellow
+    cvInRangeS(imgHSV, cvScalar(MIN_H_HILL, MIN_S_HILL, MIN_V_HILL, 0), cvScalar(MAX_H_HILL, MAX_S_HILL, MAX_V_HILL, 0), imgThresholded); //red-yellow
     //cvInRangeS(imgHSV, cvScalar(357, MIN_S_HILL,MIN_V_HILL, 0), cvScalar(360, MAX_S_HILL, MAX_V_HILL, 0), imgThresholded2); //magenta-red
     //cvOr(imgThresholded, imgThresholded2, imgThresholded, 0);
     
@@ -150,7 +152,7 @@ void recognizeHills(IplImage* frame){
     
     //Threshold the image (i.e. black and white figure, with white being the object to detect)
     IplImage* imgThresholded = cvCreateImage(cvGetSize(imgHSV), IPL_DEPTH_8U, 1);
-    cvInRangeS(imgHSV, cvScalar(MIN_H_HILL_1, MIN_S_HILL, MIN_V_HILL, 0), cvScalar(MAX_H_HILL_1, MAX_S_HILL, MAX_V_HILL, 0), imgThresholded);
+    cvInRangeS(imgHSV, cvScalar(MIN_H_HILL, MIN_S_HILL, MIN_V_HILL, 0), cvScalar(MAX_H_HILL, MAX_S_HILL, MAX_V_HILL, 0), imgThresholded);
     
     cvReleaseImage(&imgHSV);
     
@@ -175,7 +177,7 @@ void recognizeHills(IplImage* frame){
     
     
     //-----PHASE 4: CIRCLE DRAWING, BIGGEST CIRCLE DATA RETRIVAL AND DIMENSION UPDATING-----//
-    
+    //TODO: I don't think I need this for cycle because I will use just the biggest circle, hopes is the nearest
     int i;
     for (i = 0; i < circles->total; i++) {
         
@@ -184,7 +186,10 @@ void recognizeHills(IplImage* frame){
         //I pick only the first circle information because it's the biggest one == nearest
         if(i == 0){
             pixel_radius = cvRound(p[2]);
-            coordinatesOfHillCenter = cvPoint(cvRound(p[0]), cvRound(p[1]));
+            //x = p[0], y = p[1], radius = p[2]
+            coordinatesOfHillCenter = cvPoint(cvRound(p[0]), cvRound(p[1])); //TODO: I don't think that I need this
+            //the -1* is needed so negative value denote that the hill is to the left of center
+            hill_offset_from_center = -1*((IMAGE_WIDTH/2) - cvRound(p[1]));
         }
         
         //cvCircle(frame, center, radius, color, thickness, lineType, shift)
@@ -225,11 +230,11 @@ void recognizeEnemy(IplImage* frame){
     
     //-----PHASE 3: SHAPE DETECTION AND RECTANGLE DRAWING-----//
     
-    //This is here to help reduce the noise. Has to be improved!!
+    //TODO:This is here to help reduce the noise. Has to be improved!!
     cvDilate(imgThresholded, imgThresholded, 0, 3);
     
-    CvSeq* contours;
-    CvSeq* result;
+    CvSeq* contours = NULL;
+    CvSeq* result = NULL;
     CvMemStorage *storage= cvCreateMemStorage(0);
     
     cvFindContours(imgThresholded, storage, &contours, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_TC89_L1, cvPoint(0,0));
@@ -253,6 +258,9 @@ void recognizeEnemy(IplImage* frame){
         }
     }
     
+    //TODO: I need to implement some offsetting calculation. Something like:
+    //enemy_offset_from_center = -1*((IMAGE_WIDTH/2) - width_center_of_the_rectangle);
+    
     
     //-----PHASE 4: FREEING MEMORY-----//
     
@@ -275,50 +283,7 @@ void recognizeEnemy(IplImage* frame){
     enemy_distance = (POINT_OF_FOCUS * ENEMY_REAL_HEIGHT) / pixel_height; //this is expressed in cm
 }
 
-//TODO: I should put this inside another thread
-void show_gui(uint8_t* frame){
-    IplImage *img = cvCreateImageHeader(cvSize(640, 360), IPL_DEPTH_8U, 3);
-    img->imageData = frame;
-    
-    IplImage *bla = testingVision(img);
-    
-    //This is to do after the hill and enemy detection because otherwise they won't work
-    cvCvtColor(img, img, CV_BGR2RGB);
-    
-    CvFont font;
-    cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 1.0f, 1.0f, 0, 1, CV_AA);
-    
-    //---- THIS PRINT THE SCORE OVER THE VIDEO ----//
-    char drone_score_label[16] = "Drone score: "; //You have to create this string big enough to add the score, otherwise...buffer overflow!!
-    char enemy_score_label[17] = "Player score: "; //Also, this
-    char enemy_score_value[3];
-    char drone_score_value[3];
-    
-    vp_os_mutex_lock(&drone_score_mutex);
-        sprintf(drone_score_value, "%i", drone_score);
-    vp_os_mutex_unlock(&drone_score_mutex);
-    
-    vp_os_mutex_lock(&enemy_score_mutex);
-        sprintf(enemy_score_value, "%i", enemy_score);
-    vp_os_mutex_unlock(&enemy_score_mutex);
-    
-    strcat(drone_score_label, drone_score_value);
-    strcat(enemy_score_label, enemy_score_value);
-    
-    cvPutText(img, drone_score_label, cvPoint(30,30), &font, CV_RGB(255,0,0));
-    cvPutText(img, enemy_score_label, cvPoint(350,30), &font, CV_RGB(0,255,0));
-    
-    //cvNamedWindow("video", CV_WINDOW_AUTOSIZE); //this will show a blank window!!!
-    cvShowImage("Video", img);
-    cvShowImage("Thresh", bla);
-    
-    int keyboard_input = cvWaitKey(1); //we wait 20ms and if something is pressed during this time, it 'goes' in c
-    keyboard_command_attuator((char)keyboard_input);
-    
-    cvReleaseImage(&img);
-}
-
-void keyboard_command_attuator(char keyboard_input){
+void keyboard_command_attuator(int keyboard_input){
     ZAP_VIDEO_CHANNEL channel = ZAP_CHANNEL_NEXT;
     
     //TODO: add every case that you need
@@ -356,4 +321,47 @@ void keyboard_command_attuator(char keyboard_input){
             ARDRONE_TOOL_CONFIGURATION_ADDEVENT(video_channel, &channel, NULL);
             break;
     }
+}
+
+//TODO: I should put this inside another thread
+void show_gui(uint8_t* frame){
+    IplImage *img = cvCreateImageHeader(cvSize(640, 360), IPL_DEPTH_8U, 3);
+    img->imageData = (char*)frame;
+    
+    IplImage *bla = testingVision(img);
+    
+    //This is to do after the hill and enemy detection because otherwise they won't work
+    cvCvtColor(img, img, CV_BGR2RGB);
+    
+    CvFont font;
+    cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 1.0f, 1.0f, 0, 1, CV_AA);
+    
+    //---- THIS PRINT THE SCORE OVER THE VIDEO ----//
+    char drone_score_label[16] = "Drone score: "; //You have to create this string big enough to add the score, otherwise...buffer overflow!!
+    char enemy_score_label[17] = "Player score: "; //Also, this
+    char enemy_score_value[3];
+    char drone_score_value[3];
+    
+    vp_os_mutex_lock(&drone_score_mutex);
+        sprintf(drone_score_value, "%i", drone_score);
+    vp_os_mutex_unlock(&drone_score_mutex);
+    
+    vp_os_mutex_lock(&enemy_score_mutex);
+        sprintf(enemy_score_value, "%i", enemy_score);
+    vp_os_mutex_unlock(&enemy_score_mutex);
+    
+    strcat(drone_score_label, drone_score_value);
+    strcat(enemy_score_label, enemy_score_value);
+    
+    cvPutText(img, drone_score_label, cvPoint(30,30), &font, CV_RGB(255,0,0));
+    cvPutText(img, enemy_score_label, cvPoint(350,30), &font, CV_RGB(0,255,0));
+    
+    //cvNamedWindow("video", CV_WINDOW_AUTOSIZE); //this will show a blank window!!!
+    cvShowImage("Video", img);
+    cvShowImage("Thresh", bla);
+    
+    int keyboard_input = cvWaitKey(1); //we wait 20ms and if something is pressed during this time, it 'goes' in c
+    keyboard_command_attuator(keyboard_input);
+    
+    cvReleaseImage(&img);
 }

@@ -325,6 +325,10 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
     while(game_active){
         if(match){
             
+            //TODO:Uncomment this when you are ready to make the drone move autonomously
+            //ardrone_tool_set_ui_pad_start(1);
+            //ardrone_at_set_progress_cmd(0,0.0,0.0,0.0,0.0);
+            
             //--- CHASING ---//
             //NOTE: Hill have higher priority than enemy
             if(hill_in_sight){
@@ -332,6 +336,8 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 if((hill_distance > HILL_MIN_DISTANCE) && (hill_distance < HILL_MAX_DISTANCE)){
                     
                     hovering = 1;
+                    phi = 0.0;
+                    gaz = 0.0;
                     
                     //--- SET THE YAW ---//
                     //This is to correct the direction of the drone
@@ -346,17 +352,16 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                         }
                     }
                     
-                    //--- SET THE APPROCING SPEED ---//
+                    //--- SET THE APPROACHING SPEED ---//
                     //The closer the drone is to the hill, the slower it goes
-                    /*
-                     theta = -1*((hill_distance) / THETA_COEFF); //inversamente proporzionale. //Need to be negative to move forward
+                    //TODO: find the right theta_coeff
+                    theta = -1*((hill_distance) / THETA_COEFF); //Need to be negative to move forward
                      //with -1.0 being frontward movement (drone bend frontward)
-                     if(theta > 0.0) { //TODO: this need to be better defined.
-                         theta = 0.0;
-                     } else if(theta < -1.0){ 
-                         theta = -1.0;
-                     }
-                    */
+                    if(theta > 0.0) { //TODO: this need to be better defined.
+                        theta = 0.0;
+                    } else if(theta < -1.0){ 
+                        theta = -1.0;
+                    }
                     
                     //TODO: this has to be here or to be moved somewhere else? maybe right after this big if?
                     //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
@@ -383,6 +388,9 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 if(enemy_distance < ENEMY_MIN_DISTANCE){
                     hovering = 1;
                     theta = 1.0; //Move backward at maximum speed
+                    phi = 0.0;
+                    gaz = 0.0;
+                    yaw = 0.0;
                     
                 } else if((enemy_distance > ENEMY_MIN_DISTANCE) && (enemy_distance < ENEMY_SHOOTING_DISTANCE)){
                     //TODO: shoot!!
@@ -391,6 +399,9 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     //just correct yaw
                     
                     hovering = 0;
+                    phi = 0.0;
+                    theta = 0.0;
+                    gaz = 0.0;
                     
                     //--- SET THE YAW ---//
                     //This is to correct the direction of the drone
@@ -404,15 +415,15 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                             yaw = -1.0;
                         }
                     }
-                    
+                //TODO: in this case I may want to just make the drone search for hills
                 } else if((enemy_distance > ENEMY_SHOOTING_DISTANCE) && (enemy_distance < ENEMY_MAX_DISTANCE)){
                     //TODO: move toward the enemy
                     // e.g. after some time (or randomly), the drone should stop shooting and/or chasing the enemy
                     //--- SET THE YAW ---//
                     //This is to correct the direction of the drone
-                    if(abs(hill_offset_from_center) > ERROR_FROM_CENTER_FOR_HILL){
+                    if(abs(enemy_offset_from_center) > ERROR_FROM_CENTER_FOR_ENEMY){
                         //TODO: find the right multiplier for yaw and discover wich way the drone turn
-                        yaw = (hill_offset_from_center) * YAW_COEFF; //YAW_COEFF = 0.007
+                        yaw = (enemy_offset_from_center) * YAW_COEFF; //YAW_COEFF = 0.007
                         //yaw has to be between -1.0 and +1.0
                         if(yaw > 1.0) {
                             yaw = 1.0;
@@ -421,6 +432,10 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                         }
                     }
                 }
+                
+                //After calculation, make the drone move
+                //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
+                
             } else {
                 //TODO: nothing in sight: hover and start the locator algorithm
             }
@@ -533,8 +548,9 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                 
                 //scan the messages for the event "pression of trigger_button" or "pression of recharging_button"
                 //and to count the number of IR leds found
-                //TODO: define the number of leds for the drone
                 //NOTE: the wiimote find false positive (sometimes 1led == 4leds :O)
+                
+                //TODO: define the number of leds for the drone
                 //TODO: the wiimote is REALLY sensitive to sun light, I may have to rethink the recharging routine
                 for(i = 0; i < msg_count; i++){
                     
@@ -608,10 +624,6 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                     
                 //you can recharge only if you don't have bullets any more
                 } else if(bullets < 1){
-                    //TODO: I don't know if it is necessary to switch off the leds or something similar, 
-                    //or the fact that the wiimote doesn't rumble anymore is enough
-                    //cwiid_command(wiimote, CWIID_CMD_LED, !(CWIID_LED1_ON|CWIID_LED2_ON|CWIID_LED3_ON|CWIID_LED4_ON));
-                    
                     if(recharger_in_sight && recharging_button){
                         //TODO: do some fancy animation and wait tot secs
                         bullets = magazine_capacity;

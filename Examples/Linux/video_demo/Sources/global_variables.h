@@ -12,6 +12,7 @@
 #define magazine_capacity 5
 
 #define YAW_COEFF 0.007
+#define THETA_COEFF 0.007
 
 
 //DRONE LOGIC

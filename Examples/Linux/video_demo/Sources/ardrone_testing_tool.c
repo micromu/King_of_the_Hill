@@ -350,7 +350,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     //--- SET THE YAW ---//
                     //This is to correct the direction of the drone
                     if(abs(hill_offset_from_center) > ERROR_FROM_CENTER_FOR_HILL){
-                        //TODO: find the right multiplier for yaw and discover wich way the drone turn
+                        //TODO: find the right multiplier for yaw and discover which way the drone turn
                         yaw = (hill_offset_from_center) * YAW_COEFF; //YAW_COEFF = 0.007
                         //yaw has to be between -1.0 and +1.0
                         if(yaw > 1.0) {
@@ -430,14 +430,18 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                             yaw = -1.0;
                         }
                     }
-                //TODO: in this case I may want to just make the drone search for hills
+                
                 } else if((enemy_distance > ENEMY_SHOOTING_DISTANCE) && (enemy_distance < ENEMY_MAX_DISTANCE)){
-                    //TODO: move toward the enemy
-                    // e.g. after some time (or randomly), the drone should stop shooting and/or chasing the enemy
+                    
+                    //TODO: in this case I may want to just make the drone search for hills
+                    //TODO: it may escape, turning itself so the led won't face the enemy anymore
+                    
                     //--- SET THE YAW ---//
                     //This is to correct the direction of the drone
                     if(abs(enemy_offset_from_center) > ERROR_FROM_CENTER_FOR_ENEMY){
                         //TODO: find the right multiplier for yaw and discover wich way the drone turn
+                        //TODO: in this case, I won't to make the drone move away from the enemy, so the algorithm below 
+                        //has to be changed
                         yaw = (enemy_offset_from_center) * YAW_COEFF; //YAW_COEFF = 0.007
                         //yaw has to be between -1.0 and +1.0
                         if(yaw > 1.0) {
@@ -585,6 +589,20 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                             printf("BUTTON A\n");
                         } else {
                             recharging_button = 0;
+                        }
+                        
+                        //TODO: this is here in case the ar.drone stop sending video update
+                        if(msg[i].btn_mesg.buttons == CWIID_BTN_HOME){
+                            printf("The program will shutdown...\n");
+                            
+                            match = 0; //This tell the drone_logic thread to land the drone
+                            game_active = 0; //This make all the threads exit the while loop
+                            
+                            exit_program = 0;  // Force ardrone_tool to close
+                            // Sometimes, ardrone_tool might not finish properly. 
+                            //This happens mainly because a thread is blocked on a syscall, in this case, wait 5 seconds then kill the app
+                            sleep(5);
+                            exit(0);
                         }
                         
                     }

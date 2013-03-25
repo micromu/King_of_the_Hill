@@ -34,7 +34,7 @@ extern int hill_distance;
 extern int enemy_distance;
 extern int hill_offset_from_center;
 extern int enemy_offset_from_center;
-static const int POINT_OF_FOCUS = 210; //TODO: This has to be checked!
+static const int POINT_OF_FOCUS = 555;
 static const int HILL_REAL_RADIUS = 20; //TODO:This has to be checked!!
 static const int ENEMY_REAL_HEIGHT = 35; //TODO: This has to be checked!!
 static const int IMAGE_WIDTH = 640;
@@ -224,9 +224,8 @@ void recognizeEnemy(IplImage* frame){
     //NOTE: Distance = (pointOfFocus * objectRealSize)/objectApparentSize 
     //NOTE: the image is 640x360pixel
     if(pixel_height != 0){
-        //TODO: test this
-        enemy_distance = (POINT_OF_FOCUS * ENEMY_REAL_HEIGHT) / pixel_height; //this is expressed in cm
-        printf("%d\n", enemy_distance);
+        //enemy_distance is in cm, +-5cm
+        enemy_distance = (POINT_OF_FOCUS * ENEMY_REAL_HEIGHT) / pixel_height;
     }
 }
 

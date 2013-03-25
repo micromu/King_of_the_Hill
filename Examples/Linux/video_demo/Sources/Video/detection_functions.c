@@ -20,6 +20,8 @@
 // return TRUE when we close the video window
 extern int exit_program;
 
+extern int debugging;
+
 //King of the Hill variables
 extern int match;
 extern int game_active;
@@ -273,7 +275,12 @@ void show_gui(uint8_t* frame){
     IplImage *img = cvCreateImageHeader(cvSize(640, 360), IPL_DEPTH_8U, 3);
     img->imageData = (char*)frame;
     
-    IplImage *bla = testingVision(img);
+    if(debugging){
+        IplImage *bla = testingVision(img);
+        cvShowImage("Thresh", bla);
+        cvReleaseImage(&bla);
+    }
+    
     recognizeEnemy(img);
     
     //This is to do after the hill and enemy detection because otherwise they won't work
@@ -304,11 +311,9 @@ void show_gui(uint8_t* frame){
     
     //cvNamedWindow("video", CV_WINDOW_AUTOSIZE); //this will show a blank window!!!
     cvShowImage("Video", img);
-    cvShowImage("Thresh", bla);
     
     int keyboard_input = cvWaitKey(1); //we wait 20ms and if something is pressed during this time, it 'goes' in c
     keyboard_command_attuator(keyboard_input);
     
     cvReleaseImage(&img);
-    cvReleaseImage(&bla);
 }

@@ -14,6 +14,7 @@
 #define YAW_COEFF 0.007
 #define THETA_COEFF 0.007
 
+int debugging = 0;
 
 //DRONE LOGIC
 //These flags are set by the gtk thread

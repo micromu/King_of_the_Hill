@@ -109,6 +109,12 @@ int main (int argc, char *argv[])
         {
             videoChannel = ZAP_CHANNEL_VERT;
         }
+        
+        if ('-' == argv[index][0] &&
+            'd' == argv[index][1])
+        {
+            debugging = 1;
+        }
     }
 
     return ardrone_tool_main(prevargc, prevargv);
@@ -335,6 +341,8 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 //move toward the hill
                 if((hill_distance > HILL_MIN_DISTANCE) && (hill_distance < HILL_MAX_DISTANCE)){
                     
+                    printf("MOVING TOWARD THE HILL\n");
+                    
                     hovering = 1;
                     phi = 0.0;
                     gaz = 0.0;
@@ -369,6 +377,9 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 //hover over the hill
                 } else if(hill_distance < HILL_MIN_DISTANCE) {
                     //ardrone_at_set_progress_cmd(0,0,0,0,0); //to hover
+                    
+                    printf("HOVERING ON TOP OF THE HILL\n");
+                    
                     hovering = 0;
                     phi = 0.0;
                     theta = 0.0;
@@ -392,11 +403,15 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     gaz = 0.0;
                     yaw = 0.0;
                     
+                    printf("BACKING UP FROM THE ENEMY\n");
+                    
                 } else if((enemy_distance > ENEMY_MIN_DISTANCE) && (enemy_distance < ENEMY_SHOOTING_DISTANCE)){
                     //TODO: shoot!!
                     //TODO: implements a good algorithm that choose when to shoot and when not
                     // e.g. after some time (or randomly), the drone should stop shooting and/or chasing the enemy
                     //just correct yaw
+                    
+                    printf("SHOOTING!!!!!!!!\n");
                     
                     hovering = 0;
                     phi = 0.0;

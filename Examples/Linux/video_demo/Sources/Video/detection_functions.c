@@ -49,8 +49,8 @@ int MAX_V_HILL = 255;
 int pixel_radius;
 CvPoint coordinatesOfHillCenter;
 
-int MIN_H_ENEMY = 100;
-int MAX_H_ENEMY = 270;
+int MIN_H_ENEMY = 60; //100
+int MAX_H_ENEMY = 120; //270
 int MIN_S_ENEMY = 150; //TODO: this need to be calibrated with the material used (different material have different light reflection)
 int MAX_S_ENEMY = 255;
 int MIN_V_ENEMY = 15;

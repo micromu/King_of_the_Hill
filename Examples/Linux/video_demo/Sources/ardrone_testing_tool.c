@@ -131,6 +131,8 @@ C_RESULT ardrone_tool_init_custom(void)
      * - Adaptive video enabled (bitrate_ctrl_mode) -> video bitrate will change according to the available bandwidth
      */
     ardrone_application_default_config.navdata_demo = TRUE;
+    //use this -> NAVDATA_OPTION_FULL_MASK
+    //or coment the line below if detection doesn't work
     ardrone_application_default_config.navdata_options = (NAVDATA_OPTION_MASK(NAVDATA_DEMO_TAG) | NAVDATA_OPTION_MASK(NAVDATA_VISION_DETECT_TAG) | NAVDATA_OPTION_MASK(NAVDATA_GAMES_TAG) | NAVDATA_OPTION_MASK(NAVDATA_MAGNETO_TAG) | NAVDATA_OPTION_MASK(NAVDATA_HDVIDEO_STREAM_TAG) | NAVDATA_OPTION_MASK(NAVDATA_WIFI_TAG));
     if (IS_ARDRONE2){
         ardrone_application_default_config.video_codec = drone2Codec;
@@ -270,6 +272,18 @@ C_RESULT ardrone_tool_init_custom(void)
     params->post_processing_stages_list = example_post_stages;
     params->needSetPriority = 0;
     params->priority = 0;
+    
+    
+    //set the tag detection
+    ENEMY_COLORS_TYPE enemyColors = ARDRONE_DETECTION_COLOR_ORANGE_BLUE;
+    ARDRONE_TOOL_CONFIGURATION_ADDEVENT (enemy_colors, &enemyColors, NULL);
+    
+    CAD_TYPE detectType = CAD_TYPE_MULTIPLE_DETECTION_MODE;
+    ARDRONE_TOOL_CONFIGURATION_ADDEVENT (detect_type, &detectType, NULL);
+    
+    uint32_t detectH = TAG_TYPE_MASK (TAG_TYPE_SHELL_TAG_V2);
+    ARDRONE_TOOL_CONFIGURATION_ADDEVENT (detections_select_v_hsync, &detectH, NULL);
+    
 
     /**
      * Start the video thread (and the video recorder thread for AR.Drone 2)

@@ -336,6 +336,8 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
     //struct timespec shot_rumble_time;
     //shot_rumble_time.tv_sec = 1;
     //shot_rumble_time.tv_nsec = 0000000;
+    int emptiness_counter = 0;
+    
     int hovering = 0; //0 hover, 1 move
     float phi = 0.0; //left/right angle. Between [-1.0,+1.0], with negatives being leftward movement
     float theta = 0.0; //front/back angle. Between [-1.0, +1.0], with negatives being frontward movement
@@ -352,6 +354,8 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
             //--- CHASING ---//
             //NOTE: Hill have higher priority than enemy
             if(hill_in_sight){
+                emptiness_counter = 0;
+                
                 //move toward the hill
                 if((hill_distance > HILL_MIN_DISTANCE) && (hill_distance < HILL_MAX_DISTANCE)){
                     
@@ -409,6 +413,8 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 }
                 
             } else if(enemy_in_sight){
+                emptiness_counter = 0;
+                
                 //back up! Too close to the enemy (we don't want to phisically hit the human player!)
                 if(enemy_distance < ENEMY_MIN_DISTANCE){
                     hovering = 1;
@@ -471,6 +477,28 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 
             } else {
                 //TODO: nothing in sight: hover and start the locator algorithm
+                //1- make the drone rotate to try to locate an hill or the enemy
+                //NOTE: How can I know if the drone have done a 360?
+                //maybe I can set a counter, a little sleep, and set the drone to rotate around itself
+                //if after tot_times that I pass here the drone doesn't find anything, 
+                //start the "emergency" mode and land.
+                //NOTE: if I use a counter, I have to add a reset counter inside the if(hill) and if(enemy), otherwise I
+                //don't know if I finally found something
+                if(emptiness_counter == 0){
+                    //TODO: set up everything for the algorithm to start
+                    emptiness_counter = 1;
+                    //yaw = something != to zero;
+                    //everything else if zero (I don't know about hovering... problably should be 1 here)
+                    //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
+                    //TODO: should I set a little sleep (less than 1sec) here or in the condition below?
+                } else {
+                    emptiness_counter++;
+                    
+                    if(emptiness_counter > 10){
+                        //TODO:land the drone and make the game stop
+                        //so set everything that should to zero
+                    }
+                }
             }
             
             //NOTE: I don't know why, but if I add this printf the condition below works

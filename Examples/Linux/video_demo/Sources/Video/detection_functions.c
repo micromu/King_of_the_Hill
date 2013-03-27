@@ -58,7 +58,7 @@ int MIN_V_ENEMY = 15;
 int MAX_V_ENEMY = 255;
 int pixel_height;
 int minPixelHeightAllowed;
-int minPixelAreaAllowed = 500; //TODO: this need to be calibrated 
+int minPixelAreaAllowed = 1150; //1131 are 5m //TODO: this need to be calibrated 
 CvRect tmp_rectangle;
 CvRect enemy_rectangle;
 
@@ -146,6 +146,7 @@ void recognizeHills(IplImage* frame){
     if(pixel_radius != 0){
         //TODO: test this
         hill_distance = (POINT_OF_FOCUS * HILL_REAL_RADIUS) / pixel_radius; //this is expressed in cm
+        hill_in_sight = 1;
     }
     
 }
@@ -227,6 +228,9 @@ void recognizeEnemy(IplImage* frame){
     if(pixel_height != 0){
         //enemy_distance is in cm, +-5cm
         enemy_distance = (POINT_OF_FOCUS * ENEMY_REAL_HEIGHT) / pixel_height;
+        enemy_in_sight = 1;
+        //TODO: to prevent the drone to collide with the enemy I can test the distance, if it's under tot
+        //I can set here the hill_in_sight to zero, cheating, but preventing the crash
     }
 }
 

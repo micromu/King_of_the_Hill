@@ -35,6 +35,8 @@ extern int hill_distance;
 extern int enemy_distance;
 extern int hill_offset_from_center;
 extern int enemy_offset_from_center;
+extern int hill_in_sight;
+extern int enemy_in_sight;
 static const int POINT_OF_FOCUS = 555;
 static const int HILL_REAL_RADIUS = 20; //TODO:This has to be checked!!
 static const int ENEMY_REAL_HEIGHT = 35; //TODO: This has to be checked!!
@@ -147,6 +149,8 @@ void recognizeHills(IplImage* frame){
         //TODO: test this
         hill_distance = (POINT_OF_FOCUS * HILL_REAL_RADIUS) / pixel_radius; //this is expressed in cm
         hill_in_sight = 1;
+    } else {
+        hill_in_sight = 0;
     }
     
 }
@@ -229,8 +233,11 @@ void recognizeEnemy(IplImage* frame){
         //enemy_distance is in cm, +-5cm
         enemy_distance = (POINT_OF_FOCUS * ENEMY_REAL_HEIGHT) / pixel_height;
         enemy_in_sight = 1;
+        printf("ENEMY IN SIGHT!!\n");
         //TODO: to prevent the drone to collide with the enemy I can test the distance, if it's under tot
         //I can set here the hill_in_sight to zero, cheating, but preventing the crash
+    } else {
+        enemy_in_sight = 0;
     }
 }
 

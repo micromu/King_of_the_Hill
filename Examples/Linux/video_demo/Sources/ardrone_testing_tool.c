@@ -540,7 +540,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
             //Only the hill recognition can have more, because the drone can't be hurt at that time.
             
             //NOTE: I don't know why, but if I add this printf the condition below works
-            printf("%d",drone_wounded);
+            //printf("%d",drone_wounded);
             
             //---BEING HIT---//
             if(drone_wounded){

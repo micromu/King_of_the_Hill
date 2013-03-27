@@ -393,8 +393,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                         theta = -1.0;
                     }
                     
-                    //TODO: this has to be here or to be moved somewhere else? maybe right after this big if?
-                    //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
+                    //TODO: I need some sleep time for this?
                     
                 //hover over the hill
                 } else if(hill_distance < HILL_MIN_DISTANCE) {
@@ -410,9 +409,11 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     
                     //TODO: if you are close enough, you have to switch the cam and then inizialize 
                     //the recognition procedure. (wait tot secs)
+                    //TODO: I have problem switching cam
                     vp_os_mutex_lock(&drone_score_mutex);
                         drone_add_score = 1;
                     vp_os_mutex_unlock(&drone_score_mutex);
+                    //TODO: set some sleep time
                     //TODO: here, you switch the camera back
                 }
                 
@@ -429,6 +430,8 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     gaz = 0.0;
                     yaw = 0.0;
                     
+                    //TODO: set some sleep time
+                    
                     printf("BACKING UP FROM THE ENEMY\n");
                     
                 } else if((enemy_distance > ENEMY_MIN_DISTANCE) && (enemy_distance < ENEMY_SHOOTING_DISTANCE)){
@@ -438,6 +441,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     if(shooting_counter > 5){
                         
                         //TODO: make the drone move
+                        printf("ENOUGH WITH THE SHOOTING\n");
                         
                     } else {
                         
@@ -472,6 +476,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     }
                 
                 } else if((enemy_distance > ENEMY_SHOOTING_DISTANCE) && (enemy_distance < ENEMY_MAX_DISTANCE)){
+                    
                     shooting_counter = 0;
                     
                     //TODO: in this case I may want to just make the drone search for hills
@@ -493,8 +498,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     }
                 }
                 
-                //After calculation, make the drone move
-                //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
+                
             
             //NOTHING IN SIGHT
             } else {
@@ -505,16 +509,22 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     emptiness_counter = 1;
                     //yaw = something != to zero;
                     //everything else if zero (I don't know about hovering... problably should be 1 here)
-                    //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
                 } else {
                     emptiness_counter++;
-                    //TODO: should I set a little sleep (less than 1sec) here or in the condition below?
+                    //TODO: set some sleep time
                     if(emptiness_counter > 10){
                         //TODO:land the drone and make the game stop
                         //so set everything that should to zero
                     }
                 }
             }
+            
+            //TODO: if I need some sleep time from above, probably it's bettere to set the direction of the drone
+            //and then make the thread sleep, or probably make the thread sleep as the last thing
+            //because otherwise the drone will keep it precedent speed/direction etc for the sleep time
+            //or I need to send the below command in every if above that need it
+            //After calculation, make the drone move
+            //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
             
             //NOTE: I don't know why, but if I add this printf the condition below works
             printf("%d",drone_wounded);
@@ -566,6 +576,13 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
     }
     
     return C_OK;
+}
+
+DEFINE_THREAD_ROUTINE(field_finder, data){
+    //TODO: this thread should wake up only after tot secs and make the drone search
+    //for the field. If after a 360° it can't find the field, it should land
+    //NOTE: I NEED A MUTEX FOR WHEN THE FIEL FINDER WAKES UP OTHERWISE THE DRONE COULD 
+    //interrupt the field searching when it's not done
 }
 
 DEFINE_THREAD_ROUTINE(wiimote_logic, data){

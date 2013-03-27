@@ -444,6 +444,8 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     
                 } else if((enemy_distance > ENEMY_MIN_DISTANCE) && (enemy_distance < ENEMY_SHOOTING_DISTANCE)){
                     
+                    printf("INSIDE SHOOTING!!!!\n");
+                    
                     shooting_counter++;
                     
                     if(shooting_counter > 5){

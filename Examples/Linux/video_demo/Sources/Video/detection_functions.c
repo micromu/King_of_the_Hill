@@ -233,7 +233,6 @@ void recognizeEnemy(IplImage* frame){
         //enemy_distance is in cm, +-5cm
         enemy_distance = (POINT_OF_FOCUS * ENEMY_REAL_HEIGHT) / pixel_height;
         enemy_in_sight = 1;
-        printf("ENEMY IN SIGHT!!\n");
         //TODO: to prevent the drone to collide with the enemy I can test the distance, if it's under tot
         //I can set here the hill_in_sight to zero, cheating, but preventing the crash
     } else {

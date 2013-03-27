@@ -333,9 +333,10 @@ bool_t ardrone_tool_exit (){
 DEFINE_THREAD_ROUTINE(drone_logic, data){
     //the game is active from start, but the logic will start only when a match is active
     
-    //struct timespec shot_rumble_time;
-    //shot_rumble_time.tv_sec = 1;
-    //shot_rumble_time.tv_nsec = 0000000;
+    struct timespec flying_sleep_time;
+    flying_sleep_time.tv_sec = 0;
+    flying_sleep_time.tv_nsec = 0000000;
+    
     int emptiness_counter = 0;
     int shooting_counter = 0;
     
@@ -355,7 +356,10 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 takeoff = 0;
             }
             
-            //--- CHASING ---// //NOTE: Hill have higher priority than enemy
+            //--- CHASING ---// 
+            //NOTE: Hill have higher priority than enemy, this imply that if there is the enemy and an hill
+            //the drone will choose the hill. 
+            //NOTE: doing so, the drone won't care if the enemy is standing between it and the hill
             if(hill_in_sight){
                 emptiness_counter = 0;
                 shooting_counter = 0;
@@ -384,16 +388,17 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     
                     //--- SET THE APPROACHING SPEED ---//
                     //The closer the drone is to the hill, the slower it goes
-                    //TODO: find the right theta_coeff
-                    theta = -1*((hill_distance) / THETA_COEFF); //Need to be negative to move forward
-                     //with -1.0 being frontward movement (drone bend frontward)
-                    if(theta > 0.0) { //TODO: this need to be better defined.
-                        theta = 0.0;
-                    } else if(theta < -1.0){ 
+                    
+                    //Need to be negative to move forward
+                    theta = -1*((hill_distance) / THETA_COEFF); //TODO: find the right theta_coeff
+                    if(theta > 0.0) {
+                        theta = -0.1;
+                    } else if(theta < -1.0){ //TODO: I may want to rethink the maximum speed that the drone can reach!
                         theta = -1.0;
                     }
                     
-                    //TODO: I need some sleep time for this?
+                    flying_sleep_time.tv_sec = 1;
+                    flying_sleep_time.tv_nsec = 0000000;
                     
                 //hover over the hill
                 } else if(hill_distance < HILL_MIN_DISTANCE) {
@@ -413,8 +418,9 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     vp_os_mutex_lock(&drone_score_mutex);
                         drone_add_score = 1;
                     vp_os_mutex_unlock(&drone_score_mutex);
-                    //TODO: set some sleep time
                     //TODO: here, you switch the camera back
+                    flying_sleep_time.tv_sec = 5;
+                    flying_sleep_time.tv_nsec = 0000000;
                 }
                 
             } else if(enemy_in_sight){
@@ -430,7 +436,9 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     gaz = 0.0;
                     yaw = 0.0;
                     
-                    //TODO: set some sleep time
+                    //TODO: test this!
+                    flying_sleep_time.tv_sec = 2;
+                    flying_sleep_time.tv_nsec = 0000000;
                     
                     printf("BACKING UP FROM THE ENEMY\n");
                     
@@ -441,6 +449,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     if(shooting_counter > 5){
                         
                         //TODO: make the drone move
+                        //TODO:set some sleep time
                         printf("ENOUGH WITH THE SHOOTING\n");
                         
                     } else {
@@ -473,6 +482,9 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                                 yaw = -1.0;
                             }
                         }
+                        
+                        flying_sleep_time.tv_sec = 1;
+                        flying_sleep_time.tv_nsec = 0000000;
                     }
                 
                 } else if((enemy_distance > ENEMY_SHOOTING_DISTANCE) && (enemy_distance < ENEMY_MAX_DISTANCE)){
@@ -481,6 +493,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     
                     //TODO: in this case I may want to just make the drone search for hills
                     //TODO: it may escape, turning itself so the led won't face the enemy anymore
+                    //TODO: set some sleep time
                     
                     //--- SET THE YAW ---//
                     //This is to correct the direction of the drone
@@ -519,17 +532,17 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 }
             }
             
-            //TODO: if I need some sleep time from above, probably it's bettere to set the direction of the drone
-            //and then make the thread sleep, or probably make the thread sleep as the last thing
-            //because otherwise the drone will keep it precedent speed/direction etc for the sleep time
-            //or I need to send the below command in every if above that need it
-            //After calculation, make the drone move
+            //---TELL THE DRONE TO MOVE---//
+            //TODO: uncomment the line below when you're ready!
             //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
+            nanosleep(&flying_sleep_time, NULL);
+            //NOTE: if the sleep remain under 2 secs it's ok. 
+            //Only the hill recognition can have more, because the drone can't be hurt at that time.
             
             //NOTE: I don't know why, but if I add this printf the condition below works
             printf("%d",drone_wounded);
             
-            //HIT
+            //---BEING HIT---//
             if(drone_wounded){
                 //TODO: make the drone move as if it was being shot
                 //maybe this should be moved in the flying thread
@@ -581,7 +594,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
 DEFINE_THREAD_ROUTINE(field_finder, data){
     //TODO: this thread should wake up only after tot secs and make the drone search
     //for the field. If after a 360° it can't find the field, it should land
-    //NOTE: I NEED A MUTEX FOR WHEN THE FIEL FINDER WAKES UP OTHERWISE THE DRONE COULD 
+    //NOTE: I NEED A MUTEX FOR WHEN THE FIELD FINDER WAKES UP OTHERWISE THE DRONE COULD 
     //interrupt the field searching when it's not done
 }
 

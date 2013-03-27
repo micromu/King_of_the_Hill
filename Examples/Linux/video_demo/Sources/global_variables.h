@@ -1,7 +1,7 @@
 //CONSTANTS
 //TODO: find the right values
-#define HILL_MIN_DISTANCE 10
-#define HILL_MAX_DISTANCE 50
+#define HILL_MIN_DISTANCE 200
+#define HILL_MAX_DISTANCE 500
 #define ERROR_FROM_CENTER_FOR_HILL 5
 
 //NOTE: nintendo advice a distance between the wiimote and the sensor bar of 3/10m
@@ -48,8 +48,6 @@ int active_cam = 0; //who set this?
 
 
 //SCORE LOGIC
-//remember to set to 0/false drone_wounded and enemy_wounded after adding to te total score
-// e se potesse fare punto solo il drone, e il nemico si limitasse a stordirlo per tot secondi?
 int drone_score = 10;
 int drone_hill_score = 0;
 int enemy_score = 10;

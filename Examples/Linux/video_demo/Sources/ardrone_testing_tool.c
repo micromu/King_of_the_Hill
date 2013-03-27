@@ -133,7 +133,7 @@ C_RESULT ardrone_tool_init_custom(void)
     ardrone_application_default_config.navdata_demo = TRUE;
     //use this -> NAVDATA_OPTION_FULL_MASK
     //or coment the line below if detection doesn't work
-    ardrone_application_default_config.navdata_options = (NAVDATA_OPTION_MASK(NAVDATA_DEMO_TAG) | NAVDATA_OPTION_MASK(NAVDATA_VISION_DETECT_TAG) | NAVDATA_OPTION_MASK(NAVDATA_GAMES_TAG) | NAVDATA_OPTION_MASK(NAVDATA_MAGNETO_TAG) | NAVDATA_OPTION_MASK(NAVDATA_HDVIDEO_STREAM_TAG) | NAVDATA_OPTION_MASK(NAVDATA_WIFI_TAG));
+    ardrone_application_default_config.navdata_options = NAVDATA_OPTION_FULL_MASK;//(NAVDATA_OPTION_MASK(NAVDATA_DEMO_TAG) | NAVDATA_OPTION_MASK(NAVDATA_VISION_DETECT_TAG) | NAVDATA_OPTION_MASK(NAVDATA_GAMES_TAG) | NAVDATA_OPTION_MASK(NAVDATA_MAGNETO_TAG) | NAVDATA_OPTION_MASK(NAVDATA_HDVIDEO_STREAM_TAG) | NAVDATA_OPTION_MASK(NAVDATA_WIFI_TAG));
     if (IS_ARDRONE2){
         ardrone_application_default_config.video_codec = drone2Codec;
     } else {
@@ -282,7 +282,7 @@ C_RESULT ardrone_tool_init_custom(void)
     ARDRONE_TOOL_CONFIGURATION_ADDEVENT (detect_type, &detectType, NULL);
     
     uint32_t detectH = TAG_TYPE_MASK (TAG_TYPE_SHELL_TAG_V2);
-    ARDRONE_TOOL_CONFIGURATION_ADDEVENT (detections_select_v_hsync, &detectH, NULL);
+    ARDRONE_TOOL_CONFIGURATION_ADDEVENT (detections_select_h, &detectH, NULL);
     
 
     /**
@@ -337,6 +337,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
     //shot_rumble_time.tv_sec = 1;
     //shot_rumble_time.tv_nsec = 0000000;
     int emptiness_counter = 0;
+    int shooting_counter = 0;
     
     int hovering = 0; //0 hover, 1 move
     float phi = 0.0; //left/right angle. Between [-1.0,+1.0], with negatives being leftward movement
@@ -345,16 +346,19 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
     float yaw = 0.0; //Angular speed. Between [-1.0, +1.0]
     
     while(game_active){
-        if(match){
+        if(match_active){
             
-            //TODO:Uncomment this when you are ready to make the drone move autonomously
-            //ardrone_tool_set_ui_pad_start(1);
-            //ardrone_at_set_progress_cmd(0,0.0,0.0,0.0,0.0);
+            if(takeoff){
+                //TODO:Uncomment this when you are ready to make the drone move autonomously
+                //ardrone_tool_set_ui_pad_start(1);
+                //ardrone_at_set_progress_cmd(0,0.0,0.0,0.0,0.0);
+                takeoff = 0;
+            }
             
-            //--- CHASING ---//
-            //NOTE: Hill have higher priority than enemy
+            //--- CHASING ---// //NOTE: Hill have higher priority than enemy
             if(hill_in_sight){
                 emptiness_counter = 0;
+                shooting_counter = 0;
                 
                 //move toward the hill
                 if((hill_distance > HILL_MIN_DISTANCE) && (hill_distance < HILL_MAX_DISTANCE)){
@@ -417,6 +421,8 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 
                 //back up! Too close to the enemy (we don't want to phisically hit the human player!)
                 if(enemy_distance < ENEMY_MIN_DISTANCE){
+                    shooting_counter = 0;
+                    
                     hovering = 1;
                     theta = 1.0; //Move backward at maximum speed
                     phi = 0.0;
@@ -426,32 +432,47 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                     printf("BACKING UP FROM THE ENEMY\n");
                     
                 } else if((enemy_distance > ENEMY_MIN_DISTANCE) && (enemy_distance < ENEMY_SHOOTING_DISTANCE)){
-                    //TODO: shoot!!
-                    //TODO: implements a good algorithm that choose when to shoot and when not
-                    // e.g. after some time (or randomly), the drone should stop shooting and/or chasing the enemy
-                    //just correct yaw
                     
-                    printf("SHOOTING!!!!!!!!\n");
+                    shooting_counter++;
                     
-                    hovering = 0;
-                    phi = 0.0;
-                    theta = 0.0;
-                    gaz = 0.0;
-                    
-                    //--- SET THE YAW ---//
-                    //This is to correct the direction of the drone
-                    if(abs(enemy_offset_from_center) > ERROR_FROM_CENTER_FOR_ENEMY){
-                        //TODO: find the right multiplier for yaw and discover wich way the drone turn
-                        yaw = (enemy_offset_from_center) * YAW_COEFF; //YAW_COEFF = 0.007
-                        //yaw has to be between -1.0 and +1.0
-                        if(yaw > 1.0) {
-                            yaw = 1.0;
-                        } else if(yaw < -1.0){
-                            yaw = -1.0;
+                    if(shooting_counter > 5){
+                        
+                        //TODO: make the drone move
+                        
+                    } else {
+                        
+                        //TODO: shoot!!
+                        //make animation.
+                        
+                        if(enemy_offset_from_center < ERROR_FROM_CENTER_FOR_ENEMY){
+                            vp_os_mutex_lock(&enemy_score_mutex);
+                            enemy_lose_score = 1;
+                            vp_os_mutex_lock(&enemy_score_mutex);
+                        }
+                        
+                        printf("SHOOTING!!!!!!!!\n");
+                        
+                        hovering = 0;
+                        phi = 0.0;
+                        theta = 0.0;
+                        gaz = 0.0;
+                        
+                        //--- SET THE YAW ---//
+                        //This is to correct the direction of the drone
+                        if(abs(enemy_offset_from_center) > ERROR_FROM_CENTER_FOR_ENEMY){
+                            //TODO: find the right multiplier for yaw and discover wich way the drone turn
+                            yaw = (enemy_offset_from_center) * YAW_COEFF; //YAW_COEFF = 0.007
+                            //yaw has to be between -1.0 and +1.0
+                            if(yaw > 1.0) {
+                                yaw = 1.0;
+                            } else if(yaw < -1.0){
+                                yaw = -1.0;
+                            }
                         }
                     }
                 
                 } else if((enemy_distance > ENEMY_SHOOTING_DISTANCE) && (enemy_distance < ENEMY_MAX_DISTANCE)){
+                    shooting_counter = 0;
                     
                     //TODO: in this case I may want to just make the drone search for hills
                     //TODO: it may escape, turning itself so the led won't face the enemy anymore
@@ -474,26 +495,20 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
                 
                 //After calculation, make the drone move
                 //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
-                
+            
+            //NOTHING IN SIGHT
             } else {
-                //TODO: nothing in sight: hover and start the locator algorithm
-                //1- make the drone rotate to try to locate an hill or the enemy
-                //NOTE: How can I know if the drone have done a 360?
-                //maybe I can set a counter, a little sleep, and set the drone to rotate around itself
-                //if after tot_times that I pass here the drone doesn't find anything, 
-                //start the "emergency" mode and land.
-                //NOTE: if I use a counter, I have to add a reset counter inside the if(hill) and if(enemy), otherwise I
-                //don't know if I finally found something
+                //If nothing is in sight I set a counter that increment every time I pass directly from here 
+                //and make the drone rotate around itself. After tot passages with nothing in sight I take measure to land the drone.
                 if(emptiness_counter == 0){
                     //TODO: set up everything for the algorithm to start
                     emptiness_counter = 1;
                     //yaw = something != to zero;
                     //everything else if zero (I don't know about hovering... problably should be 1 here)
                     //ardrone_at_set_progress_cmd(hovering,phi,theta,gaz,yaw);
-                    //TODO: should I set a little sleep (less than 1sec) here or in the condition below?
                 } else {
                     emptiness_counter++;
-                    
+                    //TODO: should I set a little sleep (less than 1sec) here or in the condition below?
                     if(emptiness_counter > 10){
                         //TODO:land the drone and make the game stop
                         //so set everything that should to zero
@@ -546,6 +561,7 @@ DEFINE_THREAD_ROUTINE(drone_logic, data){
             //land the drone
             ardrone_at_set_progress_cmd(0,0.0,0.0,0.0,0.0);
             ardrone_tool_set_ui_pad_start(0);
+            //TODO: I may need some sleep time to make the drone land before closing everyting
         }
     }
     
@@ -577,6 +593,10 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
     struct timespec shot_rumble_time;
     shot_rumble_time.tv_sec = 1;
     shot_rumble_time.tv_nsec = 0000000;
+
+    struct timespec recharging_time;
+    recharging_time.tv_sec = 10;
+    recharging_time.tv_nsec = 0000000;
     
     while(game_active){
         
@@ -593,7 +613,7 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
             
         //ALREADY CONNECTED
         } else {
-            if(match){
+            if(match_active){
                 
                 //--- RESET VARIABLES ---//
                 number_of_led = 0;
@@ -610,9 +630,7 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                 //scan the messages for the event "pression of trigger_button" or "pression of recharging_button"
                 //and to count the number of IR leds found
                 //NOTE: the wiimote find false positive (sometimes 1led == 4leds :O)
-                
-                //TODO: define the number of leds for the drone
-                //TODO: the wiimote is REALLY sensitive to sun light, I may have to rethink the recharging routine
+                //NOTE: the wiimote is REALLY sensitive to sun light
                 for(i = 0; i < msg_count; i++){
                     
                     if(msg[i].type == CWIID_MESG_BTN){
@@ -637,7 +655,7 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                         if(msg[i].btn_mesg.buttons == CWIID_BTN_HOME){
                             printf("The program will shutdown...\n");
                             
-                            match = 0; //This tell the drone_logic thread to land the drone
+                            match_active = 0; //This tell the drone_logic thread to land the drone
                             game_active = 0; //This make all the threads exit the while loop
                             
                             exit_program = 0;  // Force ardrone_tool to close
@@ -649,7 +667,6 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                         
                     }
                     
-                    //NOTE: the wiimote find also hot source of light and the sun!!
                     //are there leds?
                     if(msg[i].type == CWIID_MESG_IR){ 
                         for(j = 0; j < CWIID_IR_SRC_COUNT; j++){
@@ -658,12 +675,9 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                             }
                         }
                         
-                        //TODO: I have problem with the recognition of a fixed amount of leds
                         if(number_of_led > 0){
                             printf("LEDS\n");
                             drone_in_sight = 1;
-                            //TODO: this is logically wrong, but is just to test it
-                            recharger_in_sight = 1;
                         } else {
                             drone_in_sight = 0;
                         }
@@ -685,7 +699,7 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                     if(drone_in_sight){
                         
                         vp_os_mutex_lock(&drone_score_mutex);
-                            enemy_add_score = 1;
+                            drone_lose_score = 1;
                         vp_os_mutex_unlock(&drone_score_mutex);
                         
                         printf("DRONE HIT\n");
@@ -699,8 +713,9 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
                     
                 //you can recharge only if you don't have bullets any more
                 } else if(bullets < 1){
-                    if(recharger_in_sight && recharging_button){
-                        //TODO: do some fancy animation and wait tot secs
+                    if(recharging_button){
+                        //TODO: How should I let the enemy know that the wiimote is full again?
+                        nanosleep(&recharging_time, NULL);
                         bullets = magazine_capacity;
                     }
                 }
@@ -713,27 +728,55 @@ DEFINE_THREAD_ROUTINE(wiimote_logic, data){
 
 DEFINE_THREAD_ROUTINE(score_logic, data){
     
+    //NOTE: the drone and the enemy have a certain amount of "life".
+    //Every time the enemy hit the drone, the drone life decrease by one
+    //Every time the drone hit the enemy, the enemy life decrease by one
+    //If the drone find tot hills, the drone wins
+    //If the enemy "kill" the drone, the enemy wins
+    //If time runs out and the drone find at least one hill, the drone wins
+    
     while(game_active){
-        //TODO: when the enemy hit the drone, we should subtract one point to the drone score,
-        //add one point to the enemy score or freeze the drone? or a combination of the three?
-        vp_os_mutex_lock(&drone_score_mutex);
         
-            if(enemy_add_score){
+        //This happen if the enemy hits the drone
+        vp_os_mutex_lock(&drone_score_mutex);
+            if(drone_lose_score){
                 if(drone_score > 0){
                     drone_score--;
                     vp_os_mutex_lock(&drone_wound_mutex);
                         drone_wounded = 1;
                     vp_os_mutex_unlock(&drone_wound_mutex);
-                } //TODO: else the drone is dead, game over!
-                
-                enemy_add_score = 0;
+                } else{
+                    //TODO: else the drone is dead, game over!
+                }
+                drone_lose_score = 0;
             }
+        vp_os_mutex_unlock(&drone_score_mutex);
         
+        //This happen if the drone hits the enemy
+        vp_os_mutex_lock(&enemy_score_mutex);
+            if(enemy_lose_score){
+                if(enemy_score > 0){
+                    enemy_score--;
+                    //TODO make the enemy aware that he's being hit
+                } else {
+                    //TODO: enemy is dead!!
+                }
+                
+                enemy_lose_score = 0;
+            }
+        vp_os_mutex_unlock(&enemy_score_mutex);
+          
+        //This happen if the drone find a hill
+        //when the hill points reach a certain amount, the drone win!!
+        vp_os_mutex_lock(&drone_score_mutex);
             if(drone_add_score){
-                drone_score++;
+                drone_hill_score++;
                 drone_add_score = 0;
             }
-        
+            
+            if(drone_hill_score > 5){
+                //TODO game over, the drone wins!!
+            }
         vp_os_mutex_unlock(&drone_score_mutex);
     }
     

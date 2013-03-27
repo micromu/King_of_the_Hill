@@ -23,7 +23,8 @@ extern int exit_program;
 extern int debugging;
 
 //King of the Hill variables
-extern int match;
+extern int takeoff;
+extern int match_active;
 extern int game_active;
 extern int drone_score;
 extern int enemy_score;
@@ -238,7 +239,7 @@ void keyboard_command_attuator(int keyboard_input){
 
             printf("The program will shutdown...\n");
             
-            match = 0; //This tell the drone_logic thread to land the drone
+            match_active = 0; //This tell the drone_logic thread to land the drone
             game_active = 0; //This make all the threads exit the while loop
             
             exit_program = 0;  // Force ardrone_tool to close
@@ -254,8 +255,8 @@ void keyboard_command_attuator(int keyboard_input){
             ardrone_tool_set_ui_pad_start(0);
             break;
         case 115: //s, as start match
-            match = 1;
-            //TODO: set the take_off variables to 1 or maybe the match variable is enough
+            match_active = 1;
+            takeoff = 1;
             break;
         case 116: //t, as in take off
             //TODO: this is here only for test purpose, should be removed before completion

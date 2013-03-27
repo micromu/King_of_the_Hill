@@ -4,6 +4,7 @@
 #define HILL_MAX_DISTANCE 50
 #define ERROR_FROM_CENTER_FOR_HILL 5
 
+//NOTE: nintendo advice a distance between the wiimote and the sensor bar of 3/10m
 #define ENEMY_MIN_DISTANCE 200
 #define ENEMY_MAX_DISTANCE 500
 #define ENEMY_SHOOTING_DISTANCE 300
@@ -19,7 +20,8 @@ int debugging = 0;
 //DRONE LOGIC
 //These flags are set by the gtk thread
 int game_active = 1;
-int match = 0;
+int match_active = 0;
+int takeoff = 0;
 //These flags are set in the video stream analisys
 int hill_in_sight = 0;
 int enemy_in_sight = 0;
@@ -49,10 +51,13 @@ int active_cam = 0; //who set this?
 //remember to set to 0/false drone_wounded and enemy_wounded after adding to te total score
 // e se potesse fare punto solo il drone, e il nemico si limitasse a stordirlo per tot secondi?
 int drone_score = 10;
+int drone_hill_score = 0;
 int enemy_score = 10;
 
 vp_os_mutex_t drone_score_mutex = PTHREAD_MUTEX_INITIALIZER;
 vp_os_mutex_t enemy_score_mutex = PTHREAD_MUTEX_INITIALIZER;
 int drone_add_score = 0;
 int enemy_add_score = 0;
+int enemy_lose_score = 0;
+int drone_lose_score = 0;
 
